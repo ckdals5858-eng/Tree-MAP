@@ -172,7 +172,6 @@
             z-index: 2900;
         }
 
-        /* --- 모바일 반응형 CSS --- */
         @media (max-width: 768px) {
             :root {
                 --sidebar-width: 260px;
@@ -221,13 +220,13 @@
             </div>
             <div class="sidebar-footer">
                 <div class="footer-buttons">
-                    <button class="btn btn-secondary" onclick="createFolder()">새 폴더 생성</button>
-                    <button class="btn" onclick="createGroup()">새 그룹 생성</button>
+                    <button id="createFolderBtn" class="btn btn-secondary">새 폴더 생성</button>
+                    <button id="createGroupBtn" class="btn">새 그룹 생성</button>
                 </div>
                 <div class="footer-buttons">
-                    <button class="btn" onclick="exportData()" style="background: #28a745;">엑셀 내보내기</button>
-                    <input type="file" id="excelImport" accept=".xlsx,.xls" style="display: none;" onchange="importData(event)">
-                    <button class="btn" onclick="document.getElementById('excelImport').click()" style="background: #ffc107; color: #333;">엑셀 가져오기</button>
+                    <button id="exportDataBtn" class="btn" style="background: #28a745;">엑셀 내보내기</button>
+                    <input type="file" id="excelImport" accept=".xlsx,.xls" style="display: none;">
+                    <button id="importDataBtn" class="btn" style="background: #ffc107; color: #333;">엑셀 가져오기</button>
                 </div>
             </div>
         </div>
@@ -235,12 +234,12 @@
         <div class="main-content">
             <div class="controls">
                 <div class="map-controls">
-                    <button class="map-type-btn active" id="roadmapBtn" onclick="changeMapType('ROADMAP')">일반지도</button>
-                    <button class="map-type-btn" id="satelliteBtn" onclick="changeMapType('HYBRID')">위성사진</button>
+                    <button id="roadmapBtn" class="map-type-btn active">일반지도</button>
+                    <button id="satelliteBtn" class="map-type-btn">위성사진</button>
                 </div>
                 <div class="search-controls">
-                    <input type="text" class="search-input" id="searchInput" placeholder="지명 검색..." onkeypress="handleSearchKeypress(event)">
-                    <button class="small-btn" onclick="searchLocation()">검색</button>
+                    <input type="text" class="search-input" id="searchInput" placeholder="지명 검색...">
+                    <button id="searchBtn" class="small-btn">검색</button>
                 </div>
             </div>
             <div id="map"></div>
@@ -250,13 +249,13 @@
             <h3 style="padding: 15px 10px; background: #f1f3f5; border-bottom: 1px solid #e9ecef;">대상목 리스트</h3>
             <div class="tree-section">
                 <div class="filters">
-                    <select id="colorFilter" onchange="filterAndSortTrees()">
+                    <select id="colorFilter">
                         <option value="">전체 색상</option>
                         <option value="red">빨강</option><option value="green">초록</option>
                         <option value="blue">파랑</option><option value="orange">주황</option>
                         <option value="gray">회색</option>
                     </select>
-                    <select id="sortFilter" onchange="filterAndSortTrees()">
+                    <select id="sortFilter">
                         <option value="name_asc">이름 오름차순</option><option value="name_desc">이름 내림차순</option>
                         <option value="number_asc">번호 오름차순</option><option value="created">만든 순서</option>
                     </select>
@@ -266,7 +265,7 @@
             </div>
         </div>
     </div>
-
+    
     <div id="folderModal" class="modal">
         <div class="modal-content">
             <h4 id="folderModalTitle">새 폴더 생성</h4>
@@ -350,28 +349,26 @@
         let geocoder; let currentFolderId = null; let currentGroupId = null; let currentTreePage = 1;
         let treesPerPage = 20;
         const colorMap = { red: '#ff4757', green: '#2ed573', blue: '#3742fa', orange: '#ffa502', gray: '#a4b0be' };
+        const validColors = Object.keys(colorMap);
 
         // --- 초기화 ---
         document.addEventListener('DOMContentLoaded', function() {
             initMap();
-            setupMobileControls();
+            setupEventListeners();
             updateFolderList();
             updateTreeList();
         });
 
-        // --- 모바일 및 터치 이벤트 ---
-        function setupMobileControls() {
+        // --- 이벤트 리스너 설정 ---
+        function setupEventListeners() {
             const leftSidebar = document.getElementById('left-sidebar');
             const rightSidebar = document.getElementById('right-sidebar');
             const backdrop = document.getElementById('backdrop');
-            const toggleLeftBtn = document.getElementById('toggleLeftSidebarBtn');
-            const toggleRightBtn = document.getElementById('toggleRightSidebarBtn');
-
-            toggleLeftBtn.addEventListener('click', () => {
+            document.getElementById('toggleLeftSidebarBtn').addEventListener('click', () => {
                 leftSidebar.classList.toggle('visible');
                 backdrop.style.display = leftSidebar.classList.contains('visible') ? 'block' : 'none';
             });
-            toggleRightBtn.addEventListener('click', () => {
+            document.getElementById('toggleRightSidebarBtn').addEventListener('click', () => {
                 rightSidebar.classList.toggle('visible');
                 backdrop.style.display = rightSidebar.classList.contains('visible') ? 'block' : 'none';
             });
@@ -380,8 +377,33 @@
                 rightSidebar.classList.remove('visible');
                 backdrop.style.display = 'none';
             });
-        }
 
+            document.getElementById('createFolderBtn').addEventListener('click', createFolder);
+            document.getElementById('createGroupBtn').addEventListener('click', createGroup);
+            document.getElementById('exportDataBtn').addEventListener('click', exportData);
+            document.getElementById('importDataBtn').addEventListener('click', () => document.getElementById('excelImport').click());
+            document.getElementById('excelImport').addEventListener('change', importData);
+
+            document.getElementById('roadmapBtn').addEventListener('click', () => changeMapType('ROADMAP'));
+            document.getElementById('satelliteBtn').addEventListener('click', () => changeMapType('HYBRID'));
+            document.getElementById('searchBtn').addEventListener('click', searchLocation);
+            document.getElementById('searchInput').addEventListener('keypress', handleSearchKeypress);
+
+            document.getElementById('colorFilter').addEventListener('change', filterAndSortTrees);
+            document.getElementById('sortFilter').addEventListener('change', filterAndSortTrees);
+            
+            document.getElementById('folderForm').addEventListener('submit', handleFolderFormSubmit);
+            document.getElementById('groupForm').addEventListener('submit', handleGroupFormSubmit);
+            document.getElementById('treeForm').addEventListener('submit', handleTreeFormSubmit);
+
+            window.addEventListener('click', (event) => {
+                if (event.target.classList.contains('modal')) {
+                    event.target.style.display = 'none';
+                }
+            });
+        }
+        
+        // --- 모바일 터치 이벤트 ---
         function addLongPressListener(element, callback, options = { duration: 500 }) {
             let timer;
             const start = (e) => {
@@ -391,7 +413,9 @@
                     if (callback) callback(e);
                 }, options.duration);
             };
-            const cancel = () => clearTimeout(timer);
+            const cancel = () => {
+                if(timer) clearTimeout(timer);
+            };
             element.addEventListener("touchstart", start, { passive: true });
             element.addEventListener("touchend", cancel);
             element.addEventListener("touchmove", cancel);
@@ -407,7 +431,8 @@
             kakao.maps.event.addListener(map, 'rightclick', (mouseEvent) => addNewTreeAt(mouseEvent.latLng));
             addLongPressListener(container, (e) => {
                 const touch = e.touches[0];
-                const point = new kakao.maps.Point(touch.clientX - container.offsetLeft, touch.clientY - container.offsetTop);
+                const rect = container.getBoundingClientRect();
+                const point = new kakao.maps.Point(touch.clientX - rect.left, touch.clientY - rect.top);
                 const latlng = map.getProjection().coordsFromContainerPoint(point);
                 addNewTreeAt(latlng);
             });
@@ -436,13 +461,52 @@
             }
         }
         
-        function changeMapType(type) { /*생략*/ }
-        function searchLocation() { /*생략*/ }
-        function handleSearchKeypress(event) { /*생략*/ }
-        function selectModalColor(element, color) { /*생략*/ }
+        function changeMapType(type) {
+            document.getElementById('roadmapBtn').classList.toggle('active', type === 'ROADMAP');
+            document.getElementById('satelliteBtn').classList.toggle('active', type !== 'ROADMAP');
+            map.setMapTypeId(kakao.maps.MapTypeId[type]);
+        }
+
+        function searchLocation() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            if (!keyword) return alert('검색할 지명을 입력하세요.');
+            document.getElementById('searchInput').blur();
+            geocoder.addressSearch(keyword, (result, status) => {
+                if (status === kakao.maps.services.Status.OK) {
+                    map.setCenter(new kakao.maps.LatLng(result[0].y, result[0].x));
+                } else {
+                    alert('검색 결과가 없습니다.');
+                }
+            });
+        }
+        function handleSearchKeypress(event) { if (event.key === 'Enter') searchLocation(); }
+        function selectModalColor(element, color) {
+            document.querySelectorAll('#treeModal .color-option').forEach(o => o.classList.remove('active'));
+            element.classList.add('active');
+            selectedColor = color;
+        }
 
         // --- UI 업데이트 ---
-        function updateMapMarkers() { /*생략*/ }
+        function updateMapMarkers() {
+            if (!map) return;
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+            const visibleTrees = trees.filter(tree => {
+                const group = groups.find(g => g.id === tree.groupId);
+                return group && group.visible;
+            });
+            visibleTrees.forEach(tree => {
+                const position = new kakao.maps.LatLng(tree.lat, tree.lng);
+                const imageSrc = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="26" viewBox="0 0 20 26"><path d="M10 0C4.477 0 0 4.477 0 10c0 7.5 10 16 10 16s10-8.5 10-16C20 4.477 15.523 0 10 0z" fill="${colorMap[tree.color] || colorMap.gray}"/><circle cx="10" cy="10" r="6" fill="white"/><text x="10" y="14" text-anchor="middle" font-size="8" font-weight="bold" fill="black">${tree.number}</text></svg>`)}`;
+                const markerImage = new kakao.maps.MarkerImage(imageSrc, new kakao.maps.Size(20, 26), {offset: new kakao.maps.Point(10, 26)});
+                const marker = new kakao.maps.Marker({ position, image: markerImage });
+                marker.setMap(map);
+                markers.push(marker);
+                kakao.maps.event.addListener(marker, 'click', () => editTree(tree.id));
+                kakao.maps.event.addListener(marker, 'rightclick', () => deleteTree(tree.id));
+            });
+        }
+
         function updateFolderList() {
             const folderListDiv = document.getElementById('folderList');
             folderListDiv.innerHTML = '';
@@ -453,7 +517,9 @@
             folders.forEach(folder => {
                 const details = document.createElement('details');
                 details.open = true;
-                details.innerHTML = `<summary><span class="folder-name">${folder.name}</span><div class="folder-actions"><button class="action-btn edit-btn" onclick="editFolder(${folder.id}, event)">수정</button><button class="action-btn delete-btn" onclick="deleteFolder(${folder.id}, event)">삭제</button></div></summary>`;
+                details.innerHTML = `<summary><span class="folder-name">${folder.name}</span><div class="folder-actions"><button class="action-btn edit-btn">수정</button><button class="action-btn delete-btn">삭제</button></div></summary>`;
+                details.querySelector('.edit-btn').addEventListener('click', (e) => editFolder(folder.id, e));
+                details.querySelector('.delete-btn').addEventListener('click', (e) => deleteFolder(folder.id, e));
                 const groupContainer = document.createElement('div');
                 groupContainer.className = 'group-container';
                 const groupsInFolder = groups.filter(g => g.folderId === folder.id);
@@ -476,8 +542,9 @@
                 folderListDiv.appendChild(details);
             });
         }
+
         function updateTreeList() {
-             const treeList = document.getElementById('treeList');
+            const treeList = document.getElementById('treeList');
             const treePagination = document.getElementById('treePagination');
             treeList.innerHTML = '';
             treePagination.innerHTML = '';
@@ -489,7 +556,14 @@
             const colorFilter = document.getElementById('colorFilter').value;
             if (colorFilter) displayTrees = displayTrees.filter(tree => tree.color === colorFilter);
             const sortFilter = document.getElementById('sortFilter').value;
-            displayTrees.sort((a, b) => { /* 정렬 로직 */ });
+            displayTrees.sort((a, b) => {
+                switch(sortFilter) {
+                    case 'name_asc': return a.species.localeCompare(b.species, 'ko');
+                    case 'name_desc': return b.species.localeCompare(a.species, 'ko');
+                    case 'number_asc': return String(a.number).localeCompare(String(b.number), undefined, {numeric: true});
+                    default: return a.id - b.id;
+                }
+            });
             if (displayTrees.length === 0) {
                  treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">수목 데이터가 없습니다.</div>';
                 return;
@@ -497,7 +571,17 @@
             const totalPages = Math.ceil(displayTrees.length / treesPerPage);
             const startIndex = (currentTreePage - 1) * treesPerPage;
             const paginatedTrees = displayTrees.slice(startIndex, startIndex + treesPerPage);
-            if (totalPages > 1) { /* 페이지네이션 로직 */ }
+            if (totalPages > 1) {
+                let paginationHTML = `<span class="page-info">${currentTreePage} / ${totalPages}</span>`;
+                if (currentTreePage > 1) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage - 1})">이전</button>`;
+                const startPage = Math.max(1, currentTreePage - 2);
+                const endPage = Math.min(totalPages, currentTreePage + 2);
+                for (let i = startPage; i <= endPage; i++) {
+                    paginationHTML += `<button class="page-btn ${i === currentTreePage ? 'active' : ''}" onclick="changeTreePage(${i})">${i}</button>`;
+                }
+                if (currentTreePage < totalPages) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage + 1})">다음</button>`;
+                treePagination.innerHTML = paginationHTML;
+            }
             paginatedTrees.forEach(tree => {
                 const div = document.createElement('div');
                 div.className = 'group-item';
@@ -510,53 +594,283 @@
         }
 
         // --- 데이터 관리 함수 ---
-        function createFolder() { /*생략*/ }
-        function editFolder(folderId, event) { /*생략*/ }
-        function deleteFolder(folderId, event) { /*생략*/ }
-        function closeFolderModal() { /*생략*/ }
-        function createGroup() { /*생략*/ }
-        function openGroupModal(groupId = null) { /*생략*/ }
-        function deleteGroup(groupId) { /*생략*/ }
-        function closeGroupModal() { /*생략*/ }
-        function populateFolderSelect(selectedFolderId) { /*생략*/ }
-        function toggleGroupVisibility(groupId, isChecked) { /*생략*/ }
-        function selectGroup(groupId) { /*생략*/ }
-        function changeTreePage(page) { /*생략*/ }
-        function filterAndSortTrees() { /*생략*/ }
-        function openTreeModal(treeId = null) { /*생략*/ }
-        function closeModal() { /*생략*/ }
-        function editTree(treeId) { /*생략*/ }
-        function deleteTree(treeId, event) { /*생략*/ }
-        function exportData() { /*생략*/ }
-        function importData(event) { /*생략*/ }
-
-        // --- 생략된 함수들의 전체 코드 ---
-        document.getElementById('folderForm').addEventListener('submit', function(e) { e.preventDefault(); const folderName = document.getElementById('folderName').value.trim(); if (!folderName) return alert('폴더 이름을 입력해주세요.'); const isDuplicate = folders.some(f => f.name === folderName && f.id !== currentFolderId); if (isDuplicate) return alert('이미 존재하는 폴더 이름입니다.'); if (currentFolderId) { const folder = folders.find(f => f.id === currentFolderId); if (folder) folder.name = folderName; } else { folders.push({ id: Date.now(), name: folderName }); } updateFolderList(); closeFolderModal(); });
-        document.getElementById('groupForm').addEventListener('submit', function(e) { e.preventDefault(); const groupName = document.getElementById('groupName').value.trim(); const folderId = parseInt(document.getElementById('groupFolderSelect').value); if (!groupName || !folderId) return alert('모든 필드를 입력해주세요.'); const isDuplicate = groups.some(g => g.name === groupName && g.folderId === folderId && g.id !== currentGroupId); if (isDuplicate) return alert('해당 폴더에 이미 같은 이름의 그룹이 있습니다.'); if (currentGroupId) { const group = groups.find(g => g.id === currentGroupId); if (group) { group.name = groupName; group.folderId = folderId; } } else { groups.push({ id: Date.now(), name: groupName, folderId: folderId, active: false, visible: true }); } updateFolderList(); closeGroupModal(); });
-        document.getElementById('treeForm').addEventListener('submit', function(e) { e.preventDefault(); const treeData = { number: document.getElementById('treeNumber').value, species: document.getElementById('treeSpecies').value, diameter: parseFloat(document.getElementById('treeDiameter').value) || 0, height: parseFloat(document.getElementById('treeHeight').value) || 0, grade: document.getElementById('treeGrade').value, notes: document.getElementById('treeNotes').value, color: selectedColor, groupId: currentGroup.id, }; if (currentTreeId) { const treeIndex = trees.findIndex(t => t.id === currentTreeId); if (treeIndex !== -1) trees[treeIndex] = { ...trees[treeIndex], ...treeData }; } else { treeData.id = Date.now(); treeData.lat = currentClickPosition.lat; treeData.lng = currentClickPosition.lng; trees.push(treeData); } updateFolderList(); updateTreeList(); updateMapMarkers(); closeModal(); });
-        function createFolder() { currentFolderId = null; document.getElementById('folderModalTitle').textContent = '새 폴더 생성'; document.getElementById('folderName').value = ''; document.getElementById('folderModal').style.display = 'block'; }
-        function editFolder(folderId, event) { event.stopPropagation(); const folder = folders.find(f => f.id === folderId); if (folder) { currentFolderId = folderId; document.getElementById('folderModalTitle').textContent = '폴더 수정'; document.getElementById('folderName').value = folder.name; document.getElementById('folderModal').style.display = 'block'; } }
-        function deleteFolder(folderId, event) { event.stopPropagation(); const folder = folders.find(f => f.id === folderId); if (!folder) return; if (confirm(`"${folder.name}" 폴더를 삭제하시겠습니까?\n폴더 안의 모든 그룹과 수목 데이터가 영구적으로 삭제됩니다.`)) { const groupsToDelete = groups.filter(g => g.folderId === folderId).map(g => g.id); trees = trees.filter(t => !groupsToDelete.includes(t.groupId)); groups = groups.filter(g => g.folderId !== folderId); folders = folders.filter(f => f.id !== folderId); updateFolderList(); updateTreeList(); updateMapMarkers(); } }
+        function createFolder() {
+            currentFolderId = null;
+            document.getElementById('folderModalTitle').textContent = '새 폴더 생성';
+            document.getElementById('folderName').value = '';
+            document.getElementById('folderModal').style.display = 'block';
+        }
+        function editFolder(folderId, event) {
+            event.stopPropagation();
+            const folder = folders.find(f => f.id === folderId);
+            if (folder) {
+                currentFolderId = folderId;
+                document.getElementById('folderModalTitle').textContent = '폴더 수정';
+                document.getElementById('folderName').value = folder.name;
+                document.getElementById('folderModal').style.display = 'block';
+            }
+        }
+        function deleteFolder(folderId, event) {
+            event.stopPropagation();
+            const folder = folders.find(f => f.id === folderId);
+            if (!folder) return;
+            if (confirm(`"${folder.name}" 폴더를 삭제하시겠습니까?\n폴더 안의 모든 그룹과 수목 데이터가 영구적으로 삭제됩니다.`)) {
+                const groupsToDelete = groups.filter(g => g.folderId === folderId).map(g => g.id);
+                trees = trees.filter(t => !groupsToDelete.includes(t.groupId));
+                groups = groups.filter(g => g.folderId !== folderId);
+                folders = folders.filter(f => f.id !== folderId);
+                updateFolderList(); updateTreeList(); updateMapMarkers();
+            }
+        }
         function closeFolderModal() { document.getElementById('folderModal').style.display = 'none'; }
-        function createGroup() { if (folders.length === 0) return alert('먼저 폴더를 생성해주세요.'); openGroupModal(); }
-        function deleteGroup(groupId) { const group = groups.find(g => g.id === groupId); if (!group) return; const treeCount = trees.filter(t => t.groupId === groupId).length; const confirmMsg = treeCount > 0 ? `"${group.name}" 그룹과 포함된 ${treeCount}개의 수목을 모두 삭제하시겠습니까?` : `"${group.name}" 그룹을 삭제하시겠습니까?`; if (confirm(confirmMsg)) { trees = trees.filter(t => t.groupId !== groupId); groups = groups.filter(g => g.id !== groupId); if (currentGroup && currentGroup.id === groupId) currentGroup = null; updateFolderList(); updateTreeList(); updateMapMarkers(); } }
+        function handleFolderFormSubmit(e) {
+            e.preventDefault();
+            const folderName = document.getElementById('folderName').value.trim();
+            if (!folderName) return alert('폴더 이름을 입력해주세요.');
+            if (folders.some(f => f.name === folderName && f.id !== currentFolderId)) return alert('이미 존재하는 폴더 이름입니다.');
+            if (currentFolderId) {
+                const folder = folders.find(f => f.id === currentFolderId);
+                if (folder) folder.name = folderName;
+            } else {
+                folders.push({ id: Date.now(), name: folderName });
+            }
+            updateFolderList();
+            closeFolderModal();
+        }
+
+        function createGroup() {
+            if (folders.length === 0) return alert('먼저 폴더를 생성해주세요.');
+            openGroupModal();
+        }
+        function openGroupModal(groupId = null) {
+            currentGroupId = groupId;
+            const modal = document.getElementById('groupModal');
+            const deleteBtn = document.getElementById('groupModalDeleteBtn');
+            const title = document.getElementById('groupModalTitle');
+            if (groupId) {
+                const group = groups.find(g => g.id === groupId);
+                if (group) {
+                    title.textContent = '그룹 수정';
+                    document.getElementById('groupName').value = group.name;
+                    populateFolderSelect(group.folderId);
+                    deleteBtn.style.display = 'inline-block';
+                    deleteBtn.onclick = () => {
+                        closeGroupModal();
+                        setTimeout(() => deleteGroup(groupId), 100);
+                    };
+                }
+            } else {
+                title.textContent = '새 그룹 생성';
+                document.getElementById('groupName').value = '';
+                populateFolderSelect();
+                deleteBtn.style.display = 'none';
+            }
+            modal.style.display = 'block';
+        }
+        function deleteGroup(groupId) {
+            const group = groups.find(g => g.id === groupId);
+            if (!group) return;
+            const treeCount = trees.filter(t => t.groupId === groupId).length;
+            const confirmMsg = treeCount > 0 ? `"${group.name}" 그룹과 포함된 ${treeCount}개의 수목을 모두 삭제하시겠습니까?` : `"${group.name}" 그룹을 삭제하시겠습니까?`;
+            if (confirm(confirmMsg)) {
+                trees = trees.filter(t => t.groupId !== groupId);
+                groups = groups.filter(g => g.id !== groupId);
+                if (currentGroup && currentGroup.id === groupId) currentGroup = null;
+                updateFolderList(); updateTreeList(); updateMapMarkers();
+            }
+        }
         function closeGroupModal() { document.getElementById('groupModal').style.display = 'none'; }
-        function populateFolderSelect(selectedFolderId) { const select = document.getElementById('groupFolderSelect'); select.innerHTML = ''; folders.forEach(folder => { const option = document.createElement('option'); option.value = folder.id; option.textContent = folder.name; if (folder.id === selectedFolderId) option.selected = true; select.appendChild(option); }); }
-        function toggleGroupVisibility(groupId, isChecked) { const group = groups.find(g => g.id === groupId); if (group) { group.visible = isChecked; updateMapMarkers(); } }
-        function selectGroup(groupId) { groups.forEach(g => g.active = (g.id === groupId)); currentGroup = groups.find(g => g.id === groupId) || null; currentTreePage = 1; updateFolderList(); updateTreeList(); if (window.innerWidth <= 768) { document.getElementById('left-sidebar').classList.remove('visible'); document.getElementById('backdrop').style.display = 'none'; } }
-        function changeTreePage(page) { currentTreePage = page; updateTreeList(); }
-        function filterAndSortTrees() { currentTreePage = 1; updateTreeList(); }
-        function openTreeModal(treeId = null) { currentTreeId = treeId; const modal = document.getElementById('treeModal'); const deleteBtn = document.getElementById('modalDeleteBtn'); if (treeId) { const tree = trees.find(t => t.id === treeId); if (tree) { document.getElementById('treeNumber').value = tree.number; document.getElementById('treeSpecies').value = tree.species; document.getElementById('treeDiameter').value = tree.diameter; document.getElementById('treeHeight').value = tree.height; document.getElementById('treeGrade').value = tree.grade; document.getElementById('treeNotes').value = tree.notes; selectModalColor(document.querySelector(`#treeModal .color-option[data-color="${tree.color}"]`), tree.color); deleteBtn.style.display = 'inline-block'; deleteBtn.onclick = () => { deleteTree(treeId); closeModal(); }; } } else { document.getElementById('treeForm').reset(); selectModalColor(document.querySelector('#treeModal .color-option[data-color="red"]'), 'red'); deleteBtn.style.display = 'none'; } modal.style.display = 'block'; }
+        function populateFolderSelect(selectedFolderId) {
+            const select = document.getElementById('groupFolderSelect');
+            select.innerHTML = '';
+            folders.forEach(folder => {
+                const option = document.createElement('option');
+                option.value = folder.id;
+                option.textContent = folder.name;
+                if (folder.id === selectedFolderId) option.selected = true;
+                select.appendChild(option);
+            });
+        }
+        function handleGroupFormSubmit(e) {
+            e.preventDefault();
+            const groupName = document.getElementById('groupName').value.trim();
+            const folderId = parseInt(document.getElementById('groupFolderSelect').value);
+            if (!groupName || !folderId) return alert('모든 필드를 입력해주세요.');
+            if (groups.some(g => g.name === groupName && g.folderId === folderId && g.id !== currentGroupId)) return alert('해당 폴더에 이미 같은 이름의 그룹이 있습니다.');
+            if (currentGroupId) {
+                const group = groups.find(g => g.id === currentGroupId);
+                if (group) { group.name = groupName; group.folderId = folderId; }
+            } else {
+                groups.push({ id: Date.now(), name: groupName, folderId: folderId, active: false, visible: true });
+            }
+            updateFolderList();
+            closeGroupModal();
+        }
+
+        function toggleGroupVisibility(groupId, isChecked) {
+            const group = groups.find(g => g.id === groupId);
+            if (group) {
+                group.visible = isChecked;
+                updateMapMarkers();
+            }
+        }
+        function selectGroup(groupId) {
+            groups.forEach(g => g.active = (g.id === groupId));
+            currentGroup = groups.find(g => g.id === groupId) || null;
+            currentTreePage = 1;
+            updateFolderList();
+            updateTreeList();
+            if (window.innerWidth <= 768) {
+                document.getElementById('left-sidebar').classList.remove('visible');
+                document.getElementById('backdrop').style.display = 'none';
+            }
+        }
+
+        function changeTreePage(page) {
+            currentTreePage = page;
+            updateTreeList();
+        }
+        function filterAndSortTrees() {
+            currentTreePage = 1;
+            updateTreeList();
+        }
+        function openTreeModal(treeId = null) {
+            currentTreeId = treeId;
+            const modal = document.getElementById('treeModal');
+            const deleteBtn = document.getElementById('modalDeleteBtn');
+            if (treeId) {
+                const tree = trees.find(t => t.id === treeId);
+                if (tree) {
+                    document.getElementById('treeNumber').value = tree.number;
+                    document.getElementById('treeSpecies').value = tree.species;
+                    document.getElementById('treeDiameter').value = tree.diameter;
+                    document.getElementById('treeHeight').value = tree.height;
+                    document.getElementById('treeGrade').value = tree.grade;
+                    document.getElementById('treeNotes').value = tree.notes;
+                    selectModalColor(document.querySelector(`#treeModal .color-option[data-color="${tree.color}"]`), tree.color);
+                    deleteBtn.style.display = 'inline-block';
+                    deleteBtn.onclick = () => { deleteTree(treeId); closeModal(); };
+                }
+            } else {
+                document.getElementById('treeForm').reset();
+                selectModalColor(document.querySelector('#treeModal .color-option[data-color="red"]'), 'red');
+                deleteBtn.style.display = 'none';
+            }
+            modal.style.display = 'block';
+        }
         function closeModal() { document.getElementById('treeModal').style.display = 'none'; }
-        function editTree(treeId) { panToTree(treeId); openTreeModal(treeId); }
-        function deleteTree(treeId, event) { if (event) event.stopPropagation(); const treeIndex = trees.findIndex(t => t.id === treeId); if (treeIndex === -1) return; const treeToDelete = trees[treeIndex]; if (confirm(`'${treeToDelete.number} - ${treeToDelete.species}' 수목 정보를 삭제하시겠습니까?`)) { trees.splice(treeIndex, 1); updateTreeList(); updateFolderList(); updateMapMarkers(); } }
-        function exportData() { if (trees.length === 0) return alert('내보낼 데이터가 없습니다.'); const dataToExport = []; trees.forEach(tree => { const group = groups.find(g => g.id === tree.groupId); const folder = group ? folders.find(f => f.id === group.folderId) : null; dataToExport.push({ '폴더명': folder ? folder.name : '', '그룹명': group ? group.name : '', '번호': tree.number, '위도': tree.lat || '', '경도': tree.lng || '', '색상': tree.color, '수종': tree.species, '흉고(cm)': tree.diameter || '', '수고(m)': tree.height || '', '등급': tree.grade || '', '비고': tree.notes || '' }); }); const worksheet = XLSX.utils.json_to_sheet(dataToExport); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "수목데이터"); XLSX.writeFile(workbook, "수목데이터.xlsx"); }
-        function importData(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = function(e) { let lastImportGroup = null; let successCount = 0; let errorCount = 0; try { const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'}); const sheetName = workbook.SheetNames[0]; const worksheet = workbook.Sheets[sheetName]; const json = XLSX.utils.sheet_to_json(worksheet); if (json.length === 0) { alert("엑셀 파일에 데이터가 없습니다."); return; } const appendData = confirm("기존 데이터를 유지하고 새로운 데이터를 추가하시겠습니까?\n'취소'를 누르면 기존 모든 데이터가 삭제되고 새로 가져옵니다."); if (!appendData) { folders = []; groups = []; trees = []; currentGroup = null; } json.forEach(row => { try { const folderName = row['폴더명'] || '미분류 폴더'; const groupName = row['그룹명'] || '미분류 그룹'; let folder = folders.find(f => f.name === folderName); if (!folder) { folder = { id: Date.now() + Math.random(), name: folderName }; folders.push(folder); } let group = groups.find(g => g.name === groupName && g.folderId === folder.id); if (!group) { group = { id: Date.now() + Math.random(), name: groupName, folderId: folder.id, active: false, visible: true }; groups.push(group); } lastImportGroup = group; const importedColor = String(row['색상'] || '').toLowerCase(); const newTree = { id: Date.now() + Math.random(), lat: parseFloat(row['위도']), lng: parseFloat(row['경도']), number: row['번호']?.toString() || 'N/A', species: row['수종'] || '', diameter: parseFloat(row['흉고(cm)']) || 0, height: parseFloat(row['수고(m)']) || 0, grade: row['등급'] || '', notes: row['비고'] || '', color: Object.keys(colorMap).includes(importedColor) ? importedColor : 'gray', groupId: group.id }; if (!isNaN(newTree.lat) && !isNaN(newTree.lng)) { trees.push(newTree); successCount++; } else { errorCount++; } } catch (rowError) { console.error("특정 행 처리 중 오류:", rowError, row); errorCount++; } }); } catch (error) { console.error("엑셀 파일 처리 중 오류 발생:", error); alert("엑셀 파일을 처리하는 중 오류가 발생했습니다."); return; } finally { let message = `${successCount}개의 데이터를 성공적으로 가져왔습니다.`; if (errorCount > 0) { message += `\n${errorCount}개의 행에서 오류가 발생하여 가져오지 못했습니다.`; } alert(message); if (lastImportGroup) { selectGroup(lastImportGroup.id); } else { updateFolderList(); updateTreeList(); } updateMapMarkers(); event.target.value = ''; } }; reader.readAsArrayBuffer(file); }
-        window.addEventListener('click', function(event) { ['treeModal', 'groupModal', 'folderModal'].forEach(id => { if (event.target.classList.contains('modal')) { document.getElementById(id).style.display = 'none'; } }); });
-        function changeMapType(type) { document.getElementById('roadmapBtn').classList.toggle('active', type === 'ROADMAP'); document.getElementById('satelliteBtn').classList.toggle('active', type === 'HYBRID'); map.setMapTypeId(kakao.maps.MapTypeId[type]); }
-        function searchLocation() { const keyword = document.getElementById('searchInput').value.trim(); if (!keyword) return alert('검색할 지명을 입력하세요.'); document.getElementById('searchInput').blur(); geocoder.addressSearch(keyword, (result, status) => { if (status === kakao.maps.services.Status.OK) { map.setCenter(new kakao.maps.LatLng(result[0].y, result[0].x)); } else { alert('검색 결과가 없습니다.'); } }); }
-        function handleSearchKeypress(event) { if (event.key === 'Enter') searchLocation(); }
-        function selectModalColor(element, color) { document.querySelectorAll('#treeModal .color-option').forEach(o => o.classList.remove('active')); element.classList.add('active'); selectedColor = color; }
+        function handleTreeFormSubmit(e) {
+            e.preventDefault();
+            const treeData = {
+                number: document.getElementById('treeNumber').value, species: document.getElementById('treeSpecies').value,
+                diameter: parseFloat(document.getElementById('treeDiameter').value) || 0,
+                height: parseFloat(document.getElementById('treeHeight').value) || 0,
+                grade: document.getElementById('treeGrade').value, notes: document.getElementById('treeNotes').value,
+                color: selectedColor, groupId: currentGroup.id,
+            };
+            if (currentTreeId) {
+                const treeIndex = trees.findIndex(t => t.id === currentTreeId);
+                if (treeIndex !== -1) trees[treeIndex] = { ...trees[treeIndex], ...treeData };
+            } else {
+                treeData.id = Date.now();
+                treeData.lat = currentClickPosition.lat;
+                treeData.lng = currentClickPosition.lng;
+                trees.push(treeData);
+            }
+            updateFolderList(); updateTreeList(); updateMapMarkers(); closeModal();
+        }
+        function editTree(treeId) {
+            panToTree(treeId);
+            openTreeModal(treeId);
+        }
+        function deleteTree(treeId, event) {
+            if (event) event.stopPropagation();
+            const treeIndex = trees.findIndex(t => t.id === treeId);
+            if (treeIndex === -1) return;
+            const treeToDelete = trees[treeIndex];
+            if (confirm(`'${treeToDelete.number} - ${treeToDelete.species}' 수목 정보를 삭제하시겠습니까?`)) {
+                trees.splice(treeIndex, 1);
+                updateTreeList(); updateFolderList(); updateMapMarkers();
+            }
+        }
+        
+        function exportData() {
+            if (trees.length === 0) return alert('내보낼 데이터가 없습니다.');
+            const dataToExport = [];
+            trees.forEach(tree => {
+                const group = groups.find(g => g.id === tree.groupId);
+                const folder = group ? folders.find(f => f.id === group.folderId) : null;
+                dataToExport.push({
+                    '폴더명': folder ? folder.name : '', '그룹명': group ? group.name : '',
+                    '번호': tree.number, '위도': tree.lat || '', '경도': tree.lng || '',
+                    '색상': tree.color, '수종': tree.species, '흉고(cm)': tree.diameter || '',
+                    '수고(m)': tree.height || '', '등급': tree.grade || '', '비고': tree.notes || ''
+                });
+            });
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "수목데이터");
+            XLSX.writeFile(workbook, "수목데이터.xlsx");
+        }
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                let lastImportGroup = null, successCount = 0, errorCount = 0;
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet);
+                    if (json.length === 0) return alert("엑셀 파일에 데이터가 없습니다.");
+                    const appendData = confirm("기존 데이터를 유지하고 새로운 데이터를 추가하시겠습니까?\n'취소'를 누르면 기존 모든 데이터가 삭제되고 새로 가져옵니다.");
+                    if (!appendData) { folders = []; groups = []; trees = []; currentGroup = null; }
+                    json.forEach(row => {
+                        try {
+                            const folderName = row['폴더명'] || '미분류 폴더';
+                            const groupName = row['그룹명'] || '미분류 그룹';
+                            let folder = folders.find(f => f.name === folderName);
+                            if (!folder) {
+                                folder = { id: Date.now() + Math.random(), name: folderName };
+                                folders.push(folder);
+                            }
+                            let group = groups.find(g => g.name === groupName && g.folderId === folder.id);
+                            if (!group) {
+                                group = { id: Date.now() + Math.random(), name: groupName, folderId: folder.id, active: false, visible: true };
+                                groups.push(group);
+                            }
+                            lastImportGroup = group;
+                            const importedColor = String(row['색상'] || '').toLowerCase();
+                            const newTree = {
+                                id: Date.now() + Math.random(), lat: parseFloat(row['위도']), lng: parseFloat(row['경도']),
+                                number: row['번호']?.toString() || 'N/A', species: row['수종'] || '',
+                                diameter: parseFloat(row['흉고(cm)']) || 0, height: parseFloat(row['수고(m)']) || 0,
+                                grade: row['등급'] || '', notes: row['비고'] || '',
+                                color: validColors.includes(importedColor) ? importedColor : 'gray', groupId: group.id
+                            };
+                            if (!isNaN(newTree.lat) && !isNaN(newTree.lng)) {
+                                trees.push(newTree); successCount++;
+                            } else { errorCount++; }
+                        } catch (rowError) { console.error("행 처리 중 오류:", rowError, row); errorCount++; }
+                    });
+                } catch (error) {
+                    console.error("엑셀 파일 처리 중 오류:", error);
+                    alert("엑셀 파일을 처리하는 중 오류가 발생했습니다.");
+                    return;
+                } finally {
+                    let message = `${successCount}개 데이터를 성공적으로 가져왔습니다.`;
+                    if (errorCount > 0) message += `\n${errorCount}개 행에서 오류가 발생했습니다.`;
+                    alert(message);
+                    if (lastImportGroup) selectGroup(lastImportGroup.id);
+                    else { updateFolderList(); updateTreeList(); }
+                    updateMapMarkers();
+                    event.target.value = '';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
     </script>
 </body>
 </html>

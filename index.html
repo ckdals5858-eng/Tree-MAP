@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수목 관리 시스템</title>
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c271d3d7aa3cd2e6702892fa92c3b313&libraries=services"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 13px;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            background: #2c3e50; 
+            color: white; 
+            text-align: center; 
+            padding: 15px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .sidebar-footer {
+            padding: 10px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+        
+        .footer-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .folder-list {
+            padding: 10px;
+        }
+
+        details {
+            margin-bottom: 8px;
+        }
+
+        summary {
+            font-weight: bold;
+            font-size: 13px;
+            padding: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            cursor: pointer;
+            list-style: none; /* Hide default marker */
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        summary::before {
+            content: '▶';
+            font-size: 10px;
+            margin-right: 8px;
+            transition: transform 0.2s;
+        }
+        
+        details[open] > summary::before {
+            transform: rotate(90deg);
+        }
+
+        summary:hover .folder-actions {
+            display: flex;
+        }
+
+        .folder-name {
+            flex-grow: 1;
+        }
+
+        .folder-actions {
+            display: none;
+            gap: 5px;
+        }
+        
+        .group-container {
+            padding-left: 20px;
+            margin-top: 5px;
+        }
+
+        .group-item {
+            padding: 8px 12px;
+            margin: 4px 0;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 12px;
+            transition: background-color 0.2s;
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            word-wrap: break-word;
+            min-height: 32px;
+        }
+
+        .group-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .group-checkbox {
+            margin-top: 2px;
+            cursor: pointer;
+        }
+
+        .group-name {
+            flex: 1;
+            word-wrap: break-word;
+            word-break: break-all;
+            line-height: 1.3;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+
+        .group-item:hover {
+            background: #e9ecef;
+        }
+
+        .group-item.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .tree-list .group-item {
+            font-size: 11px;
+            padding: 7px 10px;
+            cursor: pointer;
+        }
+        
+        .tree-list .group-item .small-text {
+            font-size: 10px;
+            color: #666;
+        }
+
+        .group-actions {
+            display: none;
+            gap: 5px;
+            flex-shrink: 0;
+            align-self: flex-start;
+            margin-top: 2px;
+        }
+
+        .group-item:hover .group-actions,
+        .group-item.active .group-actions {
+            display: flex;
+        }
+
+        .action-btn {
+            padding: 2px 6px;
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 10px;
+            opacity: 0.8;
+        }
+
+        .action-btn:hover {
+            opacity: 1;
+        }
+
+        .edit-btn {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .main-content {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .tree-sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border-left: 1px solid #e9ecef;
+            overflow: visible;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tree-section {
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .tree-list {
+            padding: 10px;
+        }
+
+        .tree-pagination, .group-pagination {
+            padding: 10px;
+            text-align: center;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 11px;
+        }
+        
+        .page-btn {
+            padding: 4px 8px; margin: 0 2px; border: 1px solid #ddd;
+            background: white; cursor: pointer; font-size: 11px; border-radius: 3px;
+        }
+        .page-btn:hover { background: #e9ecef; }
+        .page-btn.active { background: #007bff; color: white; border-color: #007bff; }
+        .page-info { font-size: 11px; color: #666; margin: 0 10px; }
+
+
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .map-controls, .search-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        .search-input {
+            padding: 4px 8px; border: 1px solid #ddd; border-radius: 3px;
+            font-size: 12px; width: 150px;
+        }
+        .small-btn {
+            padding: 4px 8px; border: none; border-radius: 3px;
+            cursor: pointer; font-size: 11px; background: #17a2b8; color: white;
+        }
+        .small-btn:hover { background: #138496; }
+        .map-type-btn {
+            padding: 4px 8px; border: 1px solid #ddd; border-radius: 3px;
+            cursor: pointer; font-size: 11px; background: white; color: #333;
+        }
+        .map-type-btn.active { background: #007bff; color: white; border-color: #007bff; }
+        .map-type-btn:hover { background: #e9ecef; }
+        .map-type-btn.active:hover { background: #0056b3; }
+        
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            background: #007bff;
+            color: white;
+            flex: 1;
+        }
+
+        .btn:hover { background: #0056b3; }
+        
+        .btn-secondary { background: #6c757d; }
+        .btn-secondary:hover { background: #5a6268; }
+
+        .modal {
+            display: none; position: fixed; z-index: 2000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white; margin: 5% auto;
+            padding: 20px; border-radius: 5px; width: 400px;
+            max-height: 80vh; overflow-y: auto;
+        }
+
+        .form-group { margin: 10px 0; }
+        .form-group label { display: block; margin-bottom: 3px; font-size: 12px; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 6px; border: 1px solid #ddd;
+            border-radius: 3px; font-size: 12px;
+        }
+        .form-group textarea { height: 60px; resize: vertical; }
+
+        .filters {
+            padding: 10px; background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex; gap: 5px; align-items: center; flex-wrap: wrap;
+        }
+        .filters select {
+            margin: 2px; padding: 4px; font-size: 11px;
+            border: 1px solid #ddd; border-radius: 3px;
+        }
+        .color-selector { display: flex; gap: 5px; margin: 10px 0; }
+        .color-option {
+            width: 25px; height: 25px; border-radius: 50%;
+            cursor: pointer; border: 3px solid transparent; transition: all 0.2s;
+        }
+        .color-option:hover { transform: scale(1.1); }
+        .color-option.active {
+            border-color: #333;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #333;
+        }
+
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .sidebar, .tree-sidebar { width: 100%; height: 200px; }
+            .main-content { height: calc(100vh - 400px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">TREEMAP</div>
+                <div style="font-size: 13px; color: #bdc3c7;">한강나무병원</div>
+            </div>
+            <div class="sidebar-content">
+                <div class="folder-list" id="folderList">
+                    </div>
+            </div>
+            <div class="sidebar-footer">
+                <div class="footer-buttons">
+                    <button class="btn btn-secondary" onclick="createFolder()">새 폴더 생성</button>
+                    <button class="btn" onclick="createGroup()">새 그룹 생성</button>
+                </div>
+                <div class="footer-buttons">
+                    <button class="btn" onclick="exportData()" style="background: #28a745; font-size: 11px;">엑셀 내보내기</button>
+                    <input type="file" id="excelImport" accept=".xlsx,.xls" style="display: none;" onchange="importData(event)">
+                    <button class="btn" onclick="document.getElementById('excelImport').click()" style="background: #ffc107; color: #333; font-size: 11px;">엑셀 가져오기</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="controls">
+                <div class="map-controls">
+                    <button class="map-type-btn active" id="roadmapBtn" onclick="changeMapType('ROADMAP')">일반지도</button>
+                    <button class="map-type-btn" id="satelliteBtn" onclick="changeMapType('HYBRID')">위성사진</button>
+                </div>
+                <div class="search-controls">
+                    <input type="text" class="search-input" id="searchInput" placeholder="지명 검색..." onkeypress="handleSearchKeypress(event)">
+                    <button class="small-btn" onclick="searchLocation()">검색</button>
+                </div>
+                </div>
+            <div id="map"></div>
+        </div>
+
+        <div class="tree-sidebar">
+            <h3>대상목 리스트</h3>
+            <div class="tree-section">
+                <div class="filters">
+                    <select id="colorFilter" onchange="filterAndSortTrees()">
+                        <option value="">전체 색상</option>
+                        <option value="red">빨강</option><option value="green">초록</option>
+                        <option value="blue">파랑</option><option value="orange">주황</option>
+                        <option value="gray">회색</option>
+                    </select>
+                    <select id="sortFilter" onchange="filterAndSortTrees()">
+                        <option value="name_asc">이름 오름차순</option><option value="name_desc">이름 내림차순</option>
+                        <option value="number_asc">번호 오름차순</option><option value="created">만든 순서</option>
+                    </select>
+                </div>
+                <div class="tree-pagination" id="treePagination"></div>
+                <div class="tree-list" id="treeList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="folderModal" class="modal">
+        <div class="modal-content">
+            <h4 id="folderModalTitle">새 폴더 생성</h4>
+            <form id="folderForm">
+                <div class="form-group">
+                    <label>폴더 이름</label>
+                    <input type="text" id="folderName" required>
+                </div>
+                <div style="text-align: right; margin-top: 15px;">
+                    <button type="button" class="btn" style="background: #6c757d;" onclick="closeFolderModal()">취소</button>
+                    <button type="submit" class="btn">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="groupModal" class="modal">
+        <div class="modal-content">
+            <h4 id="groupModalTitle">새 그룹 생성</h4>
+            <form id="groupForm">
+                <div class="form-group">
+                    <label>소속 폴더</label>
+                    <select id="groupFolderSelect" required></select>
+                </div>
+                <div class="form-group">
+                    <label>그룹 이름</label>
+                    <input type="text" id="groupName" required>
+                </div>
+                <div style="text-align: right; margin-top: 15px; display: flex; gap: 5px;">
+                    <button type="button" id="groupModalDeleteBtn" class="btn" style="background: #dc3545; margin-right: auto; display: none;">삭제</button>
+                    <button type="button" class="btn" style="background: #6c757d;" onclick="closeGroupModal()">취소</button>
+                    <button type="submit" class="btn">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="treeModal" class="modal">
+        <div class="modal-content">
+            <h4>수목 정보 입력</h4>
+            <form id="treeForm">
+                <div class="form-group">
+                    <label>번호</label><input type="text" id="treeNumber" required>
+                </div>
+                <div class="form-group">
+                    <label>수종</label><input type="text" id="treeSpecies" required>
+                </div>
+                <div class="form-group">
+                    <label>흉고(cm)</label><input type="number" id="treeDiameter" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>수고(m)</label><input type="number" id="treeHeight" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>등급</label><input type="text" id="treeGrade" placeholder="등급을 입력하세요">
+                </div>
+                <div class="form-group">
+                    <label>비고</label><textarea id="treeNotes"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>색상 선택</label>
+                    <div class="color-selector">
+                        <div class="color-option active" style="background: #ff4757;" data-color="red" onclick="selectModalColor(this, 'red')"></div>
+                        <div class="color-option" style="background: #2ed573;" data-color="green" onclick="selectModalColor(this, 'green')"></div>
+                        <div class="color-option" style="background: #3742fa;" data-color="blue" onclick="selectModalColor(this, 'blue')"></div>
+                        <div class="color-option" style="background: #ffa502;" data-color="orange" onclick="selectModalColor(this, 'orange')"></div>
+                        <div class="color-option" style="background: #a4b0be;" data-color="gray" onclick="selectModalColor(this, 'gray')"></div>
+                    </div>
+                </div>
+                <div style="text-align: right; margin-top: 15px; display: flex; gap: 5px;">
+                    <button type="button" id="modalDeleteBtn" class="btn" style="background: #dc3545; margin-right: auto; display: none;">삭제</button>
+                    <button type="button" class="btn" style="background: #6c757d;" onclick="closeModal()">취소</button>
+                    <button type="submit" class="btn">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let map;
+        let selectedColor = 'red';
+        // let addMode = false; // [수정] addMode 변수 삭제
+        let currentGroup = null;
+        let folders = [];
+        let groups = [];
+        let trees = [];
+        let currentTreeId = null;
+        let currentClickPosition = null;
+        let markers = [];
+        let geocoder;
+        let currentFolderId = null;
+        let currentGroupId = null;
+        let currentTreePage = 1;
+        let treesPerPage = 20;
+
+        const colorMap = {
+            red: '#ff4757', green: '#2ed573', blue: '#3742fa',
+            orange: '#ffa502', gray: '#a4b0be'
+        };
+        const validColors = Object.keys(colorMap);
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            updateFolderList();
+            updateTreeList();
+        });
+
+        // [수정] 지도 초기화 함수
+        function initMap() {
+            const container = document.getElementById('map');
+            const options = {
+                center: new kakao.maps.LatLng(37.5665, 126.9780),
+                level: 3
+            };
+            map = new kakao.maps.Map(container, options);
+            geocoder = new kakao.maps.services.Geocoder();
+
+            // 지도 우클릭 시 새 수목 추가
+            kakao.maps.event.addListener(map, 'rightclick', function(mouseEvent) {
+                if (!currentGroup) {
+                    alert('먼저 수목을 추가할 그룹을 선택해주세요.');
+                    return;
+                }
+                const latlng = mouseEvent.latLng;
+                currentClickPosition = { lat: latlng.getLat(), lng: latlng.getLng() };
+                openTreeModal(); // 새 수목 정보 입력창 열기
+            });
+
+            // 지도의 기본 우클릭 메뉴를 막습니다.
+            container.addEventListener('contextmenu', e => e.preventDefault());
+            
+            updateMapMarkers();
+        }
+
+        function changeMapType(type) {
+            document.getElementById('roadmapBtn').classList.toggle('active', type === 'ROADMAP');
+            document.getElementById('satelliteBtn').classList.toggle('active', type === 'HYBRID');
+            map.setMapTypeId(kakao.maps.MapTypeId[type]);
+        }
+
+        function searchLocation() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            if (!keyword) return alert('검색할 지명을 입력하세요.');
+
+            geocoder.addressSearch(keyword, function(result, status) {
+                if (status === kakao.maps.services.Status.OK) {
+                    const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+                    map.setCenter(coords);
+                } else {
+                    alert('검색 결과가 없습니다.');
+                }
+            });
+        }
+        function handleSearchKeypress(event) { if (event.key === 'Enter') searchLocation(); }
+        function selectModalColor(element, color) {
+            document.querySelectorAll('#treeModal .color-option').forEach(o => o.classList.remove('active'));
+            element.classList.add('active');
+            selectedColor = color;
+        }
+
+        function updateMapMarkers() {
+            if (!map) return;
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+
+            const visibleTrees = trees.filter(tree => {
+                const group = groups.find(g => g.id === tree.groupId);
+                return group && group.visible;
+            });
+
+            visibleTrees.forEach(tree => {
+                const position = new kakao.maps.LatLng(tree.lat, tree.lng);
+                const imageSrc = `data:image/svg+xml;base64,${btoa(`
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="26" viewBox="0 0 20 26">
+                        <path d="M10 0C4.477 0 0 4.477 0 10c0 7.5 10 16 10 16s10-8.5 10-16C20 4.477 15.523 0 10 0z" fill="${colorMap[tree.color] || colorMap.gray}"/>
+                        <circle cx="10" cy="10" r="6" fill="white"/>
+                        <text x="10" y="14" text-anchor="middle" font-size="8" font-weight="bold" fill="black">${tree.number}</text>
+                    </svg>
+                `)}`;
+                const markerImage = new kakao.maps.MarkerImage(imageSrc, new kakao.maps.Size(20, 26), {offset: new kakao.maps.Point(10, 26)});
+                const marker = new kakao.maps.Marker({ position: position, image: markerImage });
+
+                marker.setMap(map);
+                markers.push(marker);
+
+                kakao.maps.event.addListener(marker, 'click', () => editTree(tree.id));
+                kakao.maps.event.addListener(marker, 'rightclick', () => deleteTree(tree.id));
+            });
+        }
+
+        // --- 폴더 관리 ---
+        function createFolder() {
+            currentFolderId = null;
+            document.getElementById('folderModalTitle').textContent = '새 폴더 생성';
+            document.getElementById('folderName').value = '';
+            document.getElementById('folderModal').style.display = 'block';
+        }
+        function editFolder(folderId, event) {
+            event.stopPropagation();
+            const folder = folders.find(f => f.id === folderId);
+            if (folder) {
+                currentFolderId = folderId;
+                document.getElementById('folderModalTitle').textContent = '폴더 수정';
+                document.getElementById('folderName').value = folder.name;
+                document.getElementById('folderModal').style.display = 'block';
+            }
+        }
+        function deleteFolder(folderId, event) {
+            event.stopPropagation();
+            const folder = folders.find(f => f.id === folderId);
+            if (!folder) return;
+
+            if (confirm(`"${folder.name}" 폴더를 삭제하시겠습니까?\n폴더 안의 모든 그룹과 수목 데이터가 영구적으로 삭제됩니다.`)) {
+                const groupsToDelete = groups.filter(g => g.folderId === folderId).map(g => g.id);
+                trees = trees.filter(t => !groupsToDelete.includes(t.groupId));
+                groups = groups.filter(g => g.folderId !== folderId);
+                folders = folders.filter(f => f.id !== folderId);
+                updateFolderList();
+                updateTreeList();
+                updateMapMarkers();
+            }
+        }
+        function closeFolderModal() { document.getElementById('folderModal').style.display = 'none'; }
+        document.getElementById('folderForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const folderName = document.getElementById('folderName').value.trim();
+            if (!folderName) return alert('폴더 이름을 입력해주세요.');
+
+            const isDuplicate = folders.some(f => f.name === folderName && f.id !== currentFolderId);
+            if (isDuplicate) return alert('이미 존재하는 폴더 이름입니다.');
+
+            if (currentFolderId) {
+                const folder = folders.find(f => f.id === currentFolderId);
+                if (folder) folder.name = folderName;
+            } else {
+                folders.push({ id: Date.now(), name: folderName });
+            }
+            updateFolderList();
+            closeFolderModal();
+        });
+
+        // --- 그룹 관리 ---
+        function createGroup() {
+            if (folders.length === 0) return alert('먼저 폴더를 생성해주세요.');
+            openGroupModal();
+        }
+
+        function openGroupModal(groupId = null, event = null) {
+            if (event) {
+                event.preventDefault();
+            }
+            currentGroupId = groupId;
+            const modal = document.getElementById('groupModal');
+            const deleteBtn = document.getElementById('groupModalDeleteBtn');
+            const title = document.getElementById('groupModalTitle');
+            
+            if (groupId) {
+                const group = groups.find(g => g.id === groupId);
+                if (group) {
+                    title.textContent = '그룹 수정';
+                    document.getElementById('groupName').value = group.name;
+                    populateFolderSelect(group.folderId);
+                    deleteBtn.style.display = 'inline-block';
+                    deleteBtn.onclick = () => {
+                        closeGroupModal();
+                        setTimeout(() => deleteGroup(groupId), 100);
+                    };
+                }
+            } else {
+                title.textContent = '새 그룹 생성';
+                document.getElementById('groupName').value = '';
+                populateFolderSelect();
+                deleteBtn.style.display = 'none';
+            }
+            modal.style.display = 'block';
+        }
+
+        function deleteGroup(groupId) {
+            const group = groups.find(g => g.id === groupId);
+            if (!group) return;
+
+            const treeCount = trees.filter(t => t.groupId === groupId).length;
+            const confirmMsg = treeCount > 0
+                ? `"${group.name}" 그룹과 포함된 ${treeCount}개의 수목을 모두 삭제하시겠습니까?`
+                : `"${group.name}" 그룹을 삭제하시겠습니까?`;
+
+            if (confirm(confirmMsg)) {
+                trees = trees.filter(t => t.groupId !== groupId);
+                groups = groups.filter(g => g.id !== groupId);
+                if (currentGroup && currentGroup.id === groupId) currentGroup = null;
+                updateFolderList();
+                updateTreeList();
+                updateMapMarkers();
+            }
+        }
+        function closeGroupModal() { document.getElementById('groupModal').style.display = 'none'; }
+        
+        function populateFolderSelect(selectedFolderId) {
+            const select = document.getElementById('groupFolderSelect');
+            select.innerHTML = '';
+            folders.forEach(folder => {
+                const option = document.createElement('option');
+                option.value = folder.id;
+                option.textContent = folder.name;
+                if (folder.id === selectedFolderId) option.selected = true;
+                select.appendChild(option);
+            });
+        }
+        
+        document.getElementById('groupForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const groupName = document.getElementById('groupName').value.trim();
+            const folderId = parseInt(document.getElementById('groupFolderSelect').value);
+            if (!groupName || !folderId) return alert('모든 필드를 입력해주세요.');
+
+            const isDuplicate = groups.some(g => g.name === groupName && g.folderId === folderId && g.id !== currentGroupId);
+            if (isDuplicate) return alert('해당 폴더에 이미 같은 이름의 그룹이 있습니다.');
+
+            if (currentGroupId) {
+                const group = groups.find(g => g.id === currentGroupId);
+                if (group) {
+                    group.name = groupName;
+                    group.folderId = folderId;
+                }
+            } else {
+                const newGroup = { id: Date.now(), name: groupName, folderId: folderId, active: false, visible: true };
+                groups.push(newGroup);
+            }
+            updateFolderList();
+            closeGroupModal();
+        });
+
+        // --- 계층 목록 업데이트 ---
+        function updateFolderList() {
+            const folderListDiv = document.getElementById('folderList');
+            folderListDiv.innerHTML = '';
+
+            if (folders.length === 0) {
+                folderListDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">폴더가 없습니다.</div>';
+                return;
+            }
+
+            folders.forEach(folder => {
+                const details = document.createElement('details');
+                details.open = true;
+
+                const summary = document.createElement('summary');
+                const folderNameSpan = document.createElement('span');
+                folderNameSpan.className = 'folder-name';
+                folderNameSpan.textContent = folder.name;
+                
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'folder-actions';
+                actionsDiv.innerHTML = `
+                    <button class="action-btn edit-btn" onclick="editFolder(${folder.id}, event)">수정</button>
+                    <button class="action-btn delete-btn" onclick="deleteFolder(${folder.id}, event)">삭제</button>
+                `;
+                summary.appendChild(folderNameSpan);
+                summary.appendChild(actionsDiv);
+
+                const groupContainer = document.createElement('div');
+                groupContainer.className = 'group-container';
+                
+                const groupsInFolder = groups.filter(g => g.folderId === folder.id);
+                if (groupsInFolder.length > 0) {
+                    groupsInFolder.forEach(group => {
+                        const div = document.createElement('div');
+                        div.className = `group-item ${group.active ? 'active' : ''}`;
+                        div.setAttribute('oncontextmenu', `openGroupModal(${group.id}, event)`);
+                        const treeCount = trees.filter(t => t.groupId === group.id).length;
+                        div.innerHTML = `
+                            <div class="group-content">
+                                <input type="checkbox" class="group-checkbox" ${group.visible ? 'checked' : ''} onchange="toggleGroupVisibility(${group.id})" onclick="event.stopPropagation();">
+                                <div class="group-name" onclick="selectGroup(${group.id})">${group.name} (${treeCount}개)</div>
+                            </div>
+                        `;
+                        groupContainer.appendChild(div);
+                    });
+                } else {
+                    groupContainer.innerHTML = '<div style="font-size: 11px; color: #888; padding: 5px 0;">그룹이 없습니다.</div>';
+                }
+
+                details.appendChild(summary);
+                details.appendChild(groupContainer);
+                folderListDiv.appendChild(details);
+            });
+        }
+        
+        function toggleGroupVisibility(groupId) {
+            const group = groups.find(g => g.id === groupId);
+            if (group) {
+                group.visible = !group.visible;
+                updateMapMarkers();
+            }
+        }
+        
+        function selectGroup(groupId) {
+            groups.forEach(g => g.active = (g.id === groupId));
+            currentGroup = groups.find(g => g.id === groupId) || null;
+            currentTreePage = 1;
+            updateFolderList();
+            updateTreeList();
+        }
+
+        // --- 수목 목록 업데이트 ---
+        function changeTreePage(page) {
+            currentTreePage = page;
+            updateTreeList();
+        }
+
+        function filterAndSortTrees() {
+            currentTreePage = 1;
+            updateTreeList();
+        }
+        
+        function updateTreeList() {
+            const treeList = document.getElementById('treeList');
+            const treePagination = document.getElementById('treePagination');
+            treeList.innerHTML = '';
+            treePagination.innerHTML = '';
+
+            if (!currentGroup) {
+                treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">그룹을 선택하세요.</div>';
+                return;
+            }
+
+            let displayTrees = trees.filter(tree => tree.groupId === currentGroup.id);
+            
+            const colorFilter = document.getElementById('colorFilter').value;
+            if (colorFilter) displayTrees = displayTrees.filter(tree => tree.color === colorFilter);
+            
+            const sortFilter = document.getElementById('sortFilter').value;
+            displayTrees.sort((a, b) => {
+                switch(sortFilter) {
+                    case 'name_asc': return a.species.localeCompare(b.species, 'ko');
+                    case 'name_desc': return b.species.localeCompare(a.species, 'ko');
+                    case 'number_asc': return String(a.number).localeCompare(String(b.number), undefined, {numeric: true});
+                    default: return a.id - b.id; // created
+                }
+            });
+
+            if (displayTrees.length === 0) {
+                 treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">수목 데이터가 없습니다.</div>';
+                return;
+            }
+            
+            const totalPages = Math.ceil(displayTrees.length / treesPerPage);
+            const startIndex = (currentTreePage - 1) * treesPerPage;
+            const paginatedTrees = displayTrees.slice(startIndex, startIndex + treesPerPage);
+
+            if (totalPages > 1) {
+                let paginationHTML = `<span class="page-info">${currentTreePage} / ${totalPages}</span>`;
+                if (currentTreePage > 1) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage - 1})">이전</button>`;
+                
+                const startPage = Math.max(1, currentTreePage - 2);
+                const endPage = Math.min(totalPages, currentTreePage + 2);
+                for (let i = startPage; i <= endPage; i++) {
+                    paginationHTML += `<button class="page-btn ${i === currentTreePage ? 'active' : ''}" onclick="changeTreePage(${i})">${i}</button>`;
+                }
+
+                if (currentTreePage < totalPages) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage + 1})">다음</button>`;
+                treePagination.innerHTML = paginationHTML;
+            }
+            
+            paginatedTrees.forEach(tree => {
+                const div = document.createElement('div');
+                div.className = 'group-item';
+                div.setAttribute('onclick', `panToTree(${tree.id})`);
+                div.setAttribute('oncontextmenu', `openTreeModalForEdit(${tree.id}, event)`);
+
+                div.innerHTML = `
+                    <div class="group-content">
+                        <div style="width: 12px; height: 12px; border-radius: 50%; background: ${colorMap[tree.color] || colorMap.gray}; flex-shrink: 0; margin-top: 3px;"></div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div><strong>${tree.number}</strong> - ${tree.species}</div>
+                            <div class="small-text">흉고: ${tree.diameter}cm, 수고: ${tree.height}m</div>
+                        </div>
+                    </div>
+                `;
+                treeList.appendChild(div);
+            });
+        }
+        
+        // --- 포인트 추가 및 수목 관리 ---
+        function panToTree(treeId) {
+            const tree = trees.find(t => t.id === treeId);
+            if (tree && typeof tree.lat === 'number' && typeof tree.lng === 'number') {
+                const moveLatLon = new kakao.maps.LatLng(tree.lat, tree.lng);
+                map.panTo(moveLatLon);
+            }
+        }
+        
+        function openTreeModalForEdit(treeId, event) {
+            event.preventDefault();
+            openTreeModal(treeId);
+        }
+
+        // [수정] toggleAddMode 함수 삭제
+
+        function openTreeModal(treeId = null) {
+            currentTreeId = treeId;
+            const modal = document.getElementById('treeModal');
+            const deleteBtn = document.getElementById('modalDeleteBtn');
+
+            if (treeId) {
+                const tree = trees.find(t => t.id === treeId);
+                if (tree) {
+                    document.getElementById('treeNumber').value = tree.number;
+                    document.getElementById('treeSpecies').value = tree.species;
+                    document.getElementById('treeDiameter').value = tree.diameter;
+                    document.getElementById('treeHeight').value = tree.height;
+                    document.getElementById('treeGrade').value = tree.grade;
+                    document.getElementById('treeNotes').value = tree.notes;
+                    selectModalColor(document.querySelector(`#treeModal .color-option[data-color="${tree.color}"]`), tree.color);
+                    
+                    deleteBtn.style.display = 'inline-block';
+                    deleteBtn.onclick = () => {
+                        deleteTree(treeId);
+                        closeModal();
+                    };
+                }
+            } else {
+                document.getElementById('treeForm').reset();
+                selectModalColor(document.querySelector('#treeModal .color-option[data-color="red"]'), 'red');
+                deleteBtn.style.display = 'none';
+            }
+            modal.style.display = 'block';
+        }
+
+        function closeModal() { document.getElementById('treeModal').style.display = 'none'; }
+        
+        document.getElementById('treeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const treeData = {
+                number: document.getElementById('treeNumber').value,
+                species: document.getElementById('treeSpecies').value,
+                diameter: parseFloat(document.getElementById('treeDiameter').value) || 0,
+                height: parseFloat(document.getElementById('treeHeight').value) || 0,
+                grade: document.getElementById('treeGrade').value,
+                notes: document.getElementById('treeNotes').value,
+                color: selectedColor,
+                groupId: currentGroup.id,
+            };
+
+            if (currentTreeId) {
+                const treeIndex = trees.findIndex(t => t.id === currentTreeId);
+                if (treeIndex !== -1) trees[treeIndex] = { ...trees[treeIndex], ...treeData };
+            } else {
+                treeData.id = Date.now();
+                treeData.lat = currentClickPosition.lat;
+                treeData.lng = currentClickPosition.lng;
+                trees.push(treeData);
+            }
+
+            updateFolderList();
+            updateTreeList();
+            updateMapMarkers();
+            closeModal();
+        });
+        
+        function editTree(treeId) {
+            const tree = trees.find(t => t.id === treeId);
+            if (tree && typeof tree.lat === 'number' && typeof tree.lng === 'number') {
+                const moveLatLon = new kakao.maps.LatLng(tree.lat, tree.lng);
+                map.panTo(moveLatLon);
+            }
+            openTreeModal(treeId);
+        }
+
+        function deleteTree(treeId, event) {
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const treeIndex = trees.findIndex(t => t.id === treeId);
+            if (treeIndex === -1) return;
+
+            const treeToDelete = trees[treeIndex];
+            if (confirm(`'${treeToDelete.number} - ${treeToDelete.species}' 수목 정보를 삭제하시겠습니까?`)) {
+                trees.splice(treeIndex, 1);
+                updateTreeList();
+                updateFolderList();
+                updateMapMarkers();
+            }
+        }
+
+        // --- 데이터 가져오기/내보내기 ---
+        function exportData() {
+            if (trees.length === 0) return alert('내보낼 데이터가 없습니다.');
+            const headers = ['폴더명', '그룹명', '번호', '위도', '경도', '색상', '수종', '흉고(cm)', '수고(m)', '등급', '비고'];
+            const dataToExport = [];
+            
+            trees.forEach(tree => {
+                const group = groups.find(g => g.id === tree.groupId);
+                const folder = group ? folders.find(f => f.id === group.folderId) : null;
+                dataToExport.push({
+                    '폴더명': folder ? folder.name : '',
+                    '그룹명': group ? group.name : '',
+                    '번호': tree.number,
+                    '위도': tree.lat || '',
+                    '경도': tree.lng || '',
+                    '색상': tree.color,
+                    '수종': tree.species,
+                    '흉고(cm)': tree.diameter || '',
+                    '수고(m)': tree.height || '',
+                    '등급': tree.grade || '',
+                    '비고': tree.notes || ''
+                });
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport, { header: headers });
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "수목데이터");
+            XLSX.writeFile(workbook, "수목데이터.xlsx");
+        }
+
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                let lastImportGroup = null;
+                let successCount = 0;
+                let errorCount = 0;
+
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet);
+
+                    if (json.length === 0) {
+                        alert("엑셀 파일에 데이터가 없습니다.");
+                        return;
+                    }
+                    
+                    const appendData = confirm("기존 데이터를 유지하고 새로운 데이터를 추가하시겠습니까?\n'취소'를 누르면 기존 모든 데이터가 삭제되고 새로 가져옵니다.");
+
+                    if (!appendData) {
+                        folders = [];
+                        groups = [];
+                        trees = [];
+                        currentGroup = null;
+                    }
+
+                    json.forEach(row => {
+                        try {
+                            const folderName = row['폴더명'] || '미분류 폴더';
+                            const groupName = row['그룹명'] || '미분류 그룹';
+
+                            let folder = folders.find(f => f.name === folderName);
+                            if (!folder) {
+                                folder = { id: Date.now() + Math.random(), name: folderName };
+                                folders.push(folder);
+                            }
+
+                            let group = groups.find(g => g.name === groupName && g.folderId === folder.id);
+                            if (!group) {
+                                group = { id: Date.now() + Math.random(), name: groupName, folderId: folder.id, active: false, visible: true };
+                                groups.push(group);
+                            }
+                            
+                            lastImportGroup = group;
+                            
+                            const importedColor = String(row['색상'] || '').toLowerCase();
+
+                            const newTree = {
+                                id: Date.now() + Math.random(),
+                                lat: parseFloat(row['위도']),
+                                lng: parseFloat(row['경도']),
+                                number: row['번호']?.toString() || 'N/A',
+                                species: row['수종'] || '',
+                                diameter: parseFloat(row['흉고(cm)']) || 0,
+                                height: parseFloat(row['수고(m)']) || 0,
+                                grade: row['등급'] || '',
+                                notes: row['비고'] || '',
+                                color: validColors.includes(importedColor) ? importedColor : 'gray',
+                                groupId: group.id
+                            };
+
+                            if (!isNaN(newTree.lat) && !isNaN(newTree.lng)) {
+                                trees.push(newTree);
+                                successCount++;
+                            } else {
+                                errorCount++;
+                            }
+                        } catch (rowError) {
+                            console.error("특정 행 처리 중 오류:", rowError, row);
+                            errorCount++;
+                        }
+                    });
+
+                } catch (error) {
+                    console.error("엑셀 파일 처리 중 오류 발생:", error);
+                    alert("엑셀 파일을 처리하는 중 오류가 발생했습니다. 파일이 암호화되어 있거나 손상되었는지 확인해주세요.");
+                    return;
+                } finally {
+                    let message = `${successCount}개의 데이터를 성공적으로 가져왔습니다.`;
+                    if (errorCount > 0) {
+                        message += `\n${errorCount}개의 행에서 오류가 발생하여 가져오지 못했습니다.`;
+                    }
+                    alert(message);
+                    
+                    if (lastImportGroup) {
+                        selectGroup(lastImportGroup.id);
+                    } else {
+                        updateFolderList();
+                        updateTreeList();
+                    }
+                    updateMapMarkers();
+                    
+                    event.target.value = '';
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 모달 외부 클릭시 닫기
+        window.addEventListener('click', function(event) {
+            ['treeModal', 'groupModal', 'folderModal'].forEach(id => {
+                if (event.target === document.getElementById(id)) {
+                    document.getElementById(id).style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

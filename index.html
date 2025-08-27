@@ -172,6 +172,7 @@
             z-index: 2900;
         }
 
+        /* --- 모바일 반응형 CSS --- */
         @media (max-width: 768px) {
             :root {
                 --sidebar-width: 260px;
@@ -241,6 +242,7 @@
                     <input type="text" class="search-input" id="searchInput" placeholder="지명 검색...">
                     <button id="searchBtn" class="small-btn">검색</button>
                 </div>
+                <button id="myLocationBtn" class="btn btn-secondary" style="font-size: 12px;">내 위치 보기</button>
             </div>
             <div id="map"></div>
         </div>
@@ -347,7 +349,7 @@
         let map; let selectedColor = 'red'; let currentGroup = null; let folders = []; let groups = [];
         let trees = []; let currentTreeId = null; let currentClickPosition = null; let markers = [];
         let geocoder; let currentFolderId = null; let currentGroupId = null; let currentTreePage = 1;
-        let treesPerPage = 20;
+        let treesPerPage = 20; let myLocationMarker = null; // [신규] 내 위치 마커 변수
         const colorMap = { red: '#ff4757', green: '#2ed573', blue: '#3742fa', orange: '#ffa502', gray: '#a4b0be' };
         const validColors = Object.keys(colorMap);
 
@@ -377,25 +379,22 @@
                 rightSidebar.classList.remove('visible');
                 backdrop.style.display = 'none';
             });
-
             document.getElementById('createFolderBtn').addEventListener('click', createFolder);
             document.getElementById('createGroupBtn').addEventListener('click', createGroup);
             document.getElementById('exportDataBtn').addEventListener('click', exportData);
             document.getElementById('importDataBtn').addEventListener('click', () => document.getElementById('excelImport').click());
             document.getElementById('excelImport').addEventListener('change', importData);
-
             document.getElementById('roadmapBtn').addEventListener('click', () => changeMapType('ROADMAP'));
             document.getElementById('satelliteBtn').addEventListener('click', () => changeMapType('HYBRID'));
             document.getElementById('searchBtn').addEventListener('click', searchLocation);
             document.getElementById('searchInput').addEventListener('keypress', handleSearchKeypress);
-
             document.getElementById('colorFilter').addEventListener('change', filterAndSortTrees);
             document.getElementById('sortFilter').addEventListener('change', filterAndSortTrees);
-            
             document.getElementById('folderForm').addEventListener('submit', handleFolderFormSubmit);
             document.getElementById('groupForm').addEventListener('submit', handleGroupFormSubmit);
             document.getElementById('treeForm').addEventListener('submit', handleTreeFormSubmit);
-
+            // [수정] 내 위치 보기 버튼 이벤트 연결
+            document.getElementById('myLocationBtn').addEventListener('click', showMyLocation);
             window.addEventListener('click', (event) => {
                 if (event.target.classList.contains('modal')) {
                     event.target.style.display = 'none';
@@ -427,7 +426,6 @@
             const options = { center: new kakao.maps.LatLng(37.5665, 126.9780), level: 3 };
             map = new kakao.maps.Map(container, options);
             geocoder = new kakao.maps.services.Geocoder();
-
             kakao.maps.event.addListener(map, 'rightclick', (mouseEvent) => addNewTreeAt(mouseEvent.latLng));
             addLongPressListener(container, (e) => {
                 const touch = e.touches[0];
@@ -436,7 +434,6 @@
                 const latlng = map.getProjection().coordsFromContainerPoint(point);
                 addNewTreeAt(latlng);
             });
-
             container.addEventListener('contextmenu', e => e.preventDefault());
             updateMapMarkers();
         }
@@ -461,6 +458,50 @@
             }
         }
         
+        // [신규] 내 위치 표시 함수
+        function showMyLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const locPosition = new kakao.maps.LatLng(lat, lon);
+                    
+                    if (myLocationMarker) {
+                        myLocationMarker.setMap(null);
+                    }
+                    
+                    const imageSrc = `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#007bff" fill-opacity="0.3"/><circle cx="12" cy="12" r="6" fill="#007bff" stroke="white" stroke-width="2"/></svg>')}`;
+                    const imageSize = new kakao.maps.Size(24, 24);
+                    const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize);
+                    
+                    myLocationMarker = new kakao.maps.Marker({
+                        map: map,
+                        position: locPosition,
+                        image: markerImage
+                    });
+                    
+                    map.setCenter(locPosition);
+                }, function(error) {
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                            alert("위치 정보 접근이 거부되었습니다. 브라우저 설정을 확인해주세요.");
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            alert("현재 위치를 가져올 수 없습니다.");
+                            break;
+                        case error.TIMEOUT:
+                            alert("위치 정보를 가져오는 데 시간이 초과되었습니다.");
+                            break;
+                        default:
+                            alert("알 수 없는 오류가 발생했습니다.");
+                            break;
+                    }
+                });
+            } else {
+                alert("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
+            }
+        }
+
         function changeMapType(type) {
             document.getElementById('roadmapBtn').classList.toggle('active', type === 'ROADMAP');
             document.getElementById('satelliteBtn').classList.toggle('active', type !== 'ROADMAP');
@@ -860,7 +901,7 @@
                     alert("엑셀 파일을 처리하는 중 오류가 발생했습니다.");
                     return;
                 } finally {
-                    let message = `${successCount}개 데이터를 성공적으로 가져왔습니다.`;
+                    let message = `${successCount}개의 데이터를 성공적으로 가져왔습니다.`;
                     if (errorCount > 0) message += `\n${errorCount}개 행에서 오류가 발생했습니다.`;
                     alert(message);
                     if (lastImportGroup) selectGroup(lastImportGroup.id);

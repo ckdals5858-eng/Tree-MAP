@@ -171,6 +171,11 @@
             cursor: pointer; border: 3px solid transparent; transition: all 0.2s;
         }
         .color-option.active { border-color: #333; }
+        .mobile-title {
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
         .mobile-controls { display: none; }
         .backdrop {
             display: none; position: fixed; top: 0; left: 0;
@@ -204,7 +209,7 @@
             .controls { top: 60px; }
             .mobile-controls {
                 position: fixed; top: 0; left: 0; width: 100%;
-                display: flex; justify-content: space-between;
+                display: flex; justify-content: space-between; align-items: center;
                 background: #2c3e50; color: white; padding: 10px;
                 z-index: 4000; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             }
@@ -260,6 +265,7 @@
 
     <div class="mobile-controls">
         <button id="toggleLeftSidebarBtn" class="mobile-btn">☰ 폴더</button>
+        <div class="mobile-title">HK Tree Service</div>
         <button id="toggleRightSidebarBtn" class="mobile-btn">대상목 ☰</button>
     </div>
     <div class="backdrop" id="backdrop"></div>
@@ -268,7 +274,7 @@
         <div class="sidebar" id="left-sidebar">
             <div class="sidebar-header">
                 <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">TREEMAP</div>
-                <div id="user-status" style="font-size: 12px; color: #bdc3c7; min-height: 18px;"></div>
+                <div id="user-status" style="font-size: 12px; color: #bdc3c7; min-height: 38px; line-height: 1.4;"></div>
                 <button id="logoutBtn" class="btn btn-secondary" style="display: none; width: 100%; margin-top: 8px; font-size: 12px; padding: 5px;">로그아웃</button>
             </div>
             <div class="sidebar-content">
@@ -316,7 +322,7 @@
         </div>
 
         <div class="tree-sidebar" id="right-sidebar">
-            <h3 style="padding: 15px 10px; background: #f1f3f5; border-bottom: 1px solid #e9ecef;">대상목 리스트</h3>
+            <h3 id="rightSidebarTitle" style="padding: 15px 10px; background: #f1f3f5; border-bottom: 1px solid #e9ecef;">대상목 리스트</h3>
             <div class="tree-section">
                 <div class="filters">
                     <select id="colorFilter">
@@ -373,7 +379,7 @@
     </div>
     <div id="treeModal" class="modal">
         <div class="modal-content">
-            <h4>수목 정보 입력</h4>
+            <h4 id="treeModalTitle">수목 정보 입력</h4>
             <form id="treeForm">
                 <div class="form-group">
                     <label>번호</label><input type="text" id="treeNumber" required>
@@ -396,11 +402,11 @@
                 <div class="form-group">
                     <label>색상 선택</label>
                     <div class="color-selector">
-                        <div class="color-option active" style="background: #ff4757;" data-color="red" onclick="selectModalColor(this, 'red')"></div>
-                        <div class="color-option" style="background: #2ed573;" data-color="green" onclick="selectModalColor(this, 'green')"></div>
+                        <div class="color-option active" style="background: #2ed573;" data-color="green" onclick="selectModalColor(this, 'green')"></div>
                         <div class="color-option" style="background: #3742fa;" data-color="blue" onclick="selectModalColor(this, 'blue')"></div>
                         <div class="color-option" style="background: #ffa502;" data-color="orange" onclick="selectModalColor(this, 'orange')"></div>
                         <div class="color-option" style="background: #a4b0be;" data-color="gray" onclick="selectModalColor(this, 'gray')"></div>
+                        <div class="color-option" style="background: #ff4757;" data-color="red" onclick="selectModalColor(this, 'red')"></div>
                     </div>
                 </div>
                 <div style="text-align: right; margin-top: 15px; display: flex; gap: 5px;">
@@ -431,7 +437,7 @@
 
 
     // --- 전역 변수 ---
-    let map; let selectedColor = 'red'; let currentGroup = null; let folders = []; let groups = [];
+    let map; let selectedColor = 'green'; let currentGroup = null; let folders = []; let groups = [];
     let trees = []; let currentTreeId = null; let currentClickPosition = null; let markers = [];
     let geocoder; let currentFolderId = null; let currentGroupId = null; let currentTreePage = 1;
     let treesPerPage = 20; let myLocationMarker = null;
@@ -452,7 +458,7 @@
                 document.getElementById('login-modal').style.display = 'none';
                 document.getElementById('signup-modal').style.display = 'none';
                 document.getElementById('app-container').style.display = 'flex';
-                document.getElementById('user-status').textContent = currentUser.email;
+                document.getElementById('user-status').innerHTML = `<span style="font-size: 11px;">로그인 계정:</span><br><strong>${currentUser.email}</strong>`;
                 document.getElementById('logoutBtn').style.display = 'block';
 
                 // --- [타이밍 문제 해결 코드] ---
@@ -722,7 +728,7 @@
     
     async function handleTreeFormSubmit(e) {
         e.preventDefault();
-        if (!currentGroup) return alert('그룹을 먼저 선택해주세요.');
+        if (!currentGroup && !currentTreeId) return alert('그룹을 먼저 선택해주세요.');
         if (!currentUser) return;
         
         const treeData = {
@@ -733,7 +739,6 @@
             grade: document.getElementById('treeGrade').value,
             notes: document.getElementById('treeNotes').value,
             color: selectedColor,
-            groupId: currentGroup.id,
         };
         
         try {
@@ -745,6 +750,7 @@
             } else {
                 treeData.lat = currentClickPosition.lat;
                 treeData.lng = currentClickPosition.lng;
+                treeData.groupId = currentGroup.id;
                 const docRef = await db.collection('users').doc(currentUser.uid).collection('trees').add(treeData);
                 trees.push({ id: docRef.id, ...treeData });
             }
@@ -1042,12 +1048,19 @@
     function updateTreeList() {
         const treeList = document.getElementById('treeList');
         const treePagination = document.getElementById('treePagination');
+        const rightSidebarTitle = document.getElementById('rightSidebarTitle');
         treeList.innerHTML = '';
         treePagination.innerHTML = '';
         if (!currentGroup) {
             treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">그룹을 선택하세요.</div>';
+            rightSidebarTitle.textContent = '대상목 리스트';
             return;
         }
+
+        const folder = folders.find(f => f.id === currentGroup.folderId);
+        const folderName = folder ? folder.name : '미지정';
+        rightSidebarTitle.innerHTML = `대상목 리스트 <small style="display: block; font-size: 13px; color: #555; font-weight: normal; margin-top: 4px;">(${folderName} / ${currentGroup.name})</small>`;
+        
         let displayTrees = trees.filter(tree => tree.groupId === currentGroup.id);
         const colorFilter = document.getElementById('colorFilter').value;
         if (colorFilter) displayTrees = displayTrees.filter(tree => tree.color === colorFilter);
@@ -1183,6 +1196,25 @@
         currentTreeId = treeId;
         const modal = document.getElementById('treeModal');
         const deleteBtn = document.getElementById('modalDeleteBtn');
+        const modalTitle = document.getElementById('treeModalTitle');
+
+        let groupForTitle = null;
+        if (treeId) {
+            const tree = trees.find(t => t.id === treeId);
+            if (tree) groupForTitle = groups.find(g => g.id === tree.groupId);
+        } else {
+            groupForTitle = currentGroup;
+        }
+
+        if (groupForTitle) {
+            const folderForTitle = folders.find(f => f.id === groupForTitle.folderId);
+            const folderName = folderForTitle ? folderForTitle.name : '미지정';
+            const groupName = groupForTitle.name;
+            modalTitle.innerHTML = `수목 정보 입력 <small style="display: block; font-size: 13px; color: #555; font-weight: normal; margin-top: 4px;">(${folderName} / ${groupName})</small>`;
+        } else {
+            modalTitle.textContent = '수목 정보 입력';
+        }
+
         if (treeId) {
             const tree = trees.find(t => t.id === treeId);
             if (tree) {
@@ -1199,7 +1231,7 @@
             }
         } else {
             document.getElementById('treeForm').reset();
-            selectModalColor(document.querySelector('#treeModal .color-option[data-color="red"]'), 'red');
+            selectModalColor(document.querySelector('#treeModal .color-option[data-color="green"]'), 'green');
             deleteBtn.style.display = 'none';
         }
         modal.style.display = 'block';

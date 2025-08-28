@@ -119,10 +119,9 @@
             color: #6c757d; /* 약간 연하게 */
             line-height: 1.3;
             margin-top: 2px;
-        }
-        .tree-list .group-item .tree-notes {
-            word-break: break-all; /* 긴 비고 내용 줄바꿈 */
-            color: #495057;
+            white-space: nowrap; /* 한 줄로 표시 */
+            overflow: hidden; /* 넘치는 텍스트 숨기기 */
+            text-overflow: ellipsis; /* 넘치는 텍스트 ... 처리 */
         }
 
         .action-btn {
@@ -1094,7 +1093,6 @@
         const folderListDiv = document.getElementById('folderList');
         folderListDiv.innerHTML = '';
         
-        // --- [수정] 폴더 자동 정렬 (숫자 > 가나다 순) ---
         folders.sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }));
 
         if (folders.length === 0) {
@@ -1112,7 +1110,6 @@
             groupContainer.className = 'group-container';
             const groupsInFolder = groups.filter(g => g.folderId === folder.id);
 
-            // --- [수정] 그룹 자동 정렬 (숫자 > 가나다 순) ---
             groupsInFolder.sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }));
 
             if (groupsInFolder.length > 0) {
@@ -1202,23 +1199,18 @@
             const div = document.createElement('div');
             div.className = 'group-item';
 
-            // --- [수정 시작] 상세 정보 표시 ---
-            let details1 = `흉고: ${tree.diameter || 0}cm, 수고: ${tree.height || 0}m`;
-            if (tree.grade) {
-                details1 += `, 등급: ${tree.grade}`;
-            }
+            // --- [수정 시작] 상세 정보 한 줄로 표시 ---
+            let details = [];
+            if (tree.diameter) details.push(`흉고: ${tree.diameter}cm`);
+            if (tree.height) details.push(`수고: ${tree.height}m`);
+            if (tree.grade) details.push(`등급: ${tree.grade}`);
+            if (tree.notes) details.push(`비고: ${tree.notes}`);
             
-            let details2 = '';
-            if (tree.notes) {
-                details2 = `<div class="small-text tree-notes">비고: ${tree.notes}</div>`;
-            }
-
             div.innerHTML = `<div class="group-content">
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: ${colorMap[tree.color] || colorMap.gray}; flex-shrink: 0; margin-top: 3px;"></div>
                 <div style="flex: 1; min-width: 0;">
                     <div><strong>${tree.number}</strong> - ${tree.species}</div>
-                    <div class="small-text">${details1}</div>
-                    ${details2}
+                    <div class="small-text">${details.join(', ')}</div>
                 </div>
             </div>`;
             // --- [수정 끝] ---

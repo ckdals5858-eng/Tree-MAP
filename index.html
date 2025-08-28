@@ -190,18 +190,27 @@
         .coord-inputs { display: flex; gap: 5px; }
         .coord-inputs input { width: 120px; }
 
+        /* --- 모바일 화면 반응형 CSS 수정 --- */
         @media (max-width: 768px) {
             :root {
                 --sidebar-width: 260px;
                 --tree-sidebar-width: 280px;
             }
             .sidebar {
-                position: fixed; top: 0; left: 0; height: 100%;
-                transform: translateX(calc(var(--sidebar-width) * -1)); box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+                position: fixed; 
+                top: 52px; /* 수정: 상단 바 높이만큼(52px) 아래로 이동 */
+                left: 0; 
+                height: calc(100% - 52px); /* 수정: 상단 바 높이를 뺀 만큼만 차지 */
+                transform: translateX(calc(var(--sidebar-width) * -1)); 
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
             }
             .tree-sidebar {
-                position: fixed; top: 0; right: 0; height: 100%;
-                transform: translateX(var(--tree-sidebar-width)); box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+                position: fixed; 
+                top: 52px; /* 수정: 상단 바 높이만큼(52px) 아래로 이동 */
+                right: 0; 
+                height: calc(100% - 52px); /* 수정: 상단 바 높이를 뺀 만큼만 차지 */
+                transform: translateX(var(--tree-sidebar-width)); 
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
                 border-left: none;
             }
             .sidebar.visible, .tree-sidebar.visible { transform: translateX(0); }
@@ -212,6 +221,7 @@
                 display: flex; justify-content: space-between; align-items: center;
                 background: #2c3e50; color: white; padding: 10px;
                 z-index: 4000; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                height: 52px; /* 상단 바 높이 고정 */
             }
             .mobile-btn {
                 background: none; border: 1px solid white; color: white;

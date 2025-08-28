@@ -190,7 +190,6 @@
         .coord-inputs { display: flex; gap: 5px; }
         .coord-inputs input { width: 120px; }
 
-        /* --- 모바일 화면 반응형 CSS 수정 --- */
         @media (max-width: 768px) {
             :root {
                 --sidebar-width: 260px;
@@ -198,17 +197,17 @@
             }
             .sidebar {
                 position: fixed;
-                top: 52px; /* 수정: 상단 바 높이만큼 아래에서 시작 */
+                top: 52px;
                 left: 0;
-                height: calc(100% - 52px); /* 수정: 상단 바 높이를 뺀 나머지 높이 차지 */
+                height: calc(100% - 52px);
                 transform: translateX(calc(var(--sidebar-width) * -1));
                 box-shadow: 2px 0 10px rgba(0,0,0,0.1);
             }
             .tree-sidebar {
                 position: fixed;
-                top: 52px; /* 수정: 상단 바 높이만큼 아래에서 시작 */
+                top: 52px;
                 right: 0;
-                height: calc(100% - 52px); /* 수정: 상단 바 높이를 뺀 나머지 높이 차지 */
+                height: calc(100% - 52px);
                 transform: translateX(var(--tree-sidebar-width));
                 box-shadow: -2px 0 10px rgba(0,0,0,0.1);
                 border-left: none;
@@ -216,11 +215,11 @@
             .sidebar.visible, .tree-sidebar.visible { transform: translateX(0); }
             .main-content { height: 100%; }
             .controls {
-                top: 62px; /* 수정: 상단 바(52px) 아래에 위치하도록 조정 */
+                top: 62px;
             }
             .mobile-controls {
                 position: fixed;
-                top: 0; /* 상단 위치 고정 */
+                top: 0;
                 left: 0;
                 width: 100%;
                 display: flex;
@@ -231,7 +230,7 @@
                 padding: 10px;
                 z-index: 4000;
                 box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-                height: 52px; /* 높이 명시 */
+                height: 52px;
             }
             .mobile-btn {
                 background: none;
@@ -351,15 +350,28 @@
                 <div class="filters">
                     <select id="colorFilter">
                         <option value="">전체 색상</option>
-                        <option value="red">빨강</option><option value="green">초록</option>
-                        <option value="blue">파랑</option><option value="orange">주황</option>
+                        <option value="green">초록</option>
+                        <option value="blue">파랑</option>
+                        <option value="orange">주황</option>
                         <option value="gray">회색</option>
+                        <option value="red">빨강</option>
+                    </select>
+                    <select id="gradeFilter">
+                        <option value="">전체 등급</option>
+                        <option value="1">1등급</option>
+                        <option value="2">2등급</option>
+                        <option value="3">3등급</option>
+                        <option value="4">4등급</option>
+                        <option value="5">5등급</option>
                     </select>
                     <select id="sortFilter">
-                        <option value="name_asc">이름 오름차순</option><option value="name_desc">이름 내림차순</option>
-                        <option value="number_asc">번호 오름차순</option><option value="created">만든 순서</option>
+                        <option value="number_asc">번호 오름차순</option>
+                        <option value="number_desc">번호 내림차순</option>
+                        <option value="created_desc">만든순서 내림차순</option>
+                        <option value="created_asc">만든순서 오름차순</option>
                     </select>
                 </div>
+                <div id="treeListInfo" style="padding: 8px 12px; font-size: 12px; color: #333; background: #f1f3f5; border-bottom: 1px solid #e9ecef;"></div>
                 <div class="tree-pagination" id="treePagination"></div>
                 <div class="tree-list" id="treeList"></div>
             </div>
@@ -485,17 +497,13 @@
                 document.getElementById('user-status').innerHTML = `<span style="font-size: 11px;">로그인 계정:</span><br><strong>${currentUser.email}</strong>`;
                 document.getElementById('logoutBtn').style.display = 'block';
 
-                // --- [타이밍 문제 해결 코드] ---
-                // 지도 컨테이너가 화면에 표시된 후, 지도의 크기를 다시 계산하도록 명령합니다.
-                // setTimeout으로 약간의 지연(0.1초)을 주어 브라우저가 레이아웃을 완전히 계산할 시간을 확보합니다.
                 setTimeout(() => {
-                    if (map) { // map 객체가 생성된 후에만 실행
+                    if (map) {
                         map.relayout();
                     }
                 }, 100); 
-                // --- 여기까지 ---
 
-                loadUserData(); // 사용자 데이터 불러오기
+                loadUserData();
             } else {
                 // 로그아웃 상태
                 currentUser = null;
@@ -503,7 +511,7 @@
                 document.getElementById('app-container').style.display = 'none';
                 document.getElementById('user-status').textContent = '로그인이 필요합니다.';
                 document.getElementById('logoutBtn').style.display = 'none';
-                // 데이터 초기화
+                
                 folders = []; groups = []; trees = []; currentGroup = null;
                 updateFolderList();
                 updateTreeList();
@@ -584,7 +592,6 @@
             }
         });
 
-        // --- 기존 이벤트 리스너들 ---
         const leftSidebar = document.getElementById('left-sidebar');
         const rightSidebar = document.getElementById('right-sidebar');
         const backdrop = document.getElementById('backdrop');
@@ -617,6 +624,7 @@
         });
 
         document.getElementById('colorFilter').addEventListener('change', filterAndSortTrees);
+        document.getElementById('gradeFilter').addEventListener('change', filterAndSortTrees);
         document.getElementById('sortFilter').addEventListener('change', filterAndSortTrees);
         document.getElementById('folderForm').addEventListener('submit', handleFolderFormSubmit);
         document.getElementById('groupForm').addEventListener('submit', handleGroupFormSubmit);
@@ -775,6 +783,7 @@
                 treeData.lat = currentClickPosition.lat;
                 treeData.lng = currentClickPosition.lng;
                 treeData.groupId = currentGroup.id;
+                treeData.createdAt = firebase.firestore.FieldValue.serverTimestamp(); // 생성 시각 추가
                 const docRef = await db.collection('users').doc(currentUser.uid).collection('trees').add(treeData);
                 trees.push({ id: docRef.id, ...treeData });
             }
@@ -847,9 +856,10 @@
                         lat: parseFloat(row['위도']), lng: parseFloat(row['경도']),
                         number: row['번호']?.toString() || 'N/A', species: row['수종'] || '',
                         diameter: parseFloat(row['흉고(cm)']) || 0, height: parseFloat(row['수고(m)']) || 0,
-                        grade: row['등급'] || '', notes: row['비고'] || '',
+                        grade: row['등급']?.toString() || '', notes: row['비고'] || '',
                         color: validColors.includes(importedColor) ? importedColor : 'gray',
-                        groupId: group.id
+                        groupId: group.id,
+                        createdAt: new Date() // 가져온 시각을 생성 시각으로 추가
                     };
 
                     if (!isNaN(newTree.lat) && !isNaN(newTree.lng)) {
@@ -1073,11 +1083,15 @@
         const treeList = document.getElementById('treeList');
         const treePagination = document.getElementById('treePagination');
         const rightSidebarTitle = document.getElementById('rightSidebarTitle');
+        const treeListInfo = document.getElementById('treeListInfo');
+        
         treeList.innerHTML = '';
         treePagination.innerHTML = '';
+
         if (!currentGroup) {
             treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">그룹을 선택하세요.</div>';
             rightSidebarTitle.textContent = '대상목 리스트';
+            treeListInfo.textContent = '';
             return;
         }
 
@@ -1085,20 +1099,45 @@
         const folderName = folder ? folder.name : '미지정';
         rightSidebarTitle.innerHTML = `대상목 리스트 <small style="display: block; font-size: 13px; color: #555; font-weight: normal; margin-top: 4px;">(${folderName} / ${currentGroup.name})</small>`;
         
+        // 1. 현재 그룹의 모든 수목 가져오기
         let displayTrees = trees.filter(tree => tree.groupId === currentGroup.id);
+
+        // 2. 필터 적용
         const colorFilter = document.getElementById('colorFilter').value;
-        if (colorFilter) displayTrees = displayTrees.filter(tree => tree.color === colorFilter);
+        if (colorFilter) {
+            displayTrees = displayTrees.filter(tree => tree.color === colorFilter);
+        }
+        const gradeFilter = document.getElementById('gradeFilter').value;
+        if (gradeFilter) {
+            displayTrees = displayTrees.filter(tree => tree.grade === gradeFilter);
+        }
+
+        // 3. 필터된 개수 표시
+        treeListInfo.textContent = `총 ${displayTrees.length}개의 대상목`;
+
+        // 4. 정렬 적용
         const sortFilter = document.getElementById('sortFilter').value;
         displayTrees.sort((a, b) => {
             switch(sortFilter) {
-                case 'name_asc': return a.species.localeCompare(b.species, 'ko');
-                case 'name_desc': return b.species.localeCompare(a.species, 'ko');
-                case 'number_asc': return String(a.number).localeCompare(String(b.number), undefined, {numeric: true});
-                default: return 0;
+                case 'number_asc':
+                    return String(a.number).localeCompare(String(b.number), undefined, {numeric: true});
+                case 'number_desc':
+                    return String(b.number).localeCompare(String(a.number), undefined, {numeric: true});
+                case 'created_asc':
+                    const timeA_asc = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime()) : 0;
+                    const timeB_asc = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt).getTime()) : 0;
+                    return timeA_asc - timeB_asc;
+                case 'created_desc':
+                    const timeA_desc = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime()) : 0;
+                    const timeB_desc = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt).getTime()) : 0;
+                    return timeB_desc - timeA_desc;
+                default:
+                    return 0;
             }
         });
+        
         if (displayTrees.length === 0) {
-            treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">수목 데이터가 없습니다.</div>';
+            treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">표시할 수목이 없습니다.</div>';
             return;
         }
         const totalPages = Math.ceil(displayTrees.length / treesPerPage);

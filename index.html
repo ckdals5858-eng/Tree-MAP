@@ -455,11 +455,23 @@
 
     // --- 초기화 및 인증 ---
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM 로드 완료, 초기화 시작...');
+        
+        // Firebase 초기화 확인
+        if (!firebase.apps.length) {
+            console.error('Firebase가 초기화되지 않았습니다.');
+            return;
+        }
+        
+        console.log('Firebase 초기화 확인됨');
+        
         initMap();
         setupEventListeners();
 
         // Firebase 인증 상태 변경 감지
         auth.onAuthStateChanged(user => {
+            console.log('인증 상태 변경:', user ? user.email : '로그아웃');
+            
             if (user) {
                 // 로그인 성공
                 currentUser = user;

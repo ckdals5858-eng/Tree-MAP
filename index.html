@@ -93,6 +93,20 @@
         .group-item.active { background: #007bff; color: white; border-color: #007bff; }
         .tree-list .group-item { font-size: 12px; padding: 8px 10px; cursor: pointer; }
         .tree-list .group-item .small-text { font-size: 11px; color: #666; }
+        
+        /* --- [수정] 폴더/그룹 목록 간격 축소 --- */
+        .folder-list summary {
+            padding: 6px 8px;
+            font-size: 13px;
+        }
+        .folder-list .group-item {
+            padding: 7px 12px;
+            margin: 3px 0;
+        }
+        .folder-list .group-name {
+            line-height: 1.3;
+        }
+
         .action-btn {
             padding: 2px 6px; border: none; border-radius: 2px;
             cursor: pointer; font-size: 10px; opacity: 0.8;
@@ -242,8 +256,6 @@
             }
             .coord-inputs { flex-direction: column; }
             .coord-inputs input { width: 100%; }
-
-            /* --- 모바일 필터 및 리스트 간격 조정 --- */
             .filters {
                 flex-wrap: nowrap;
                 padding: 8px 5px;
@@ -1067,10 +1079,15 @@
     function updateFolderList() {
         const folderListDiv = document.getElementById('folderList');
         folderListDiv.innerHTML = '';
+        
+        // --- [수정] 폴더 자동 정렬 (숫자 > 가나다 순) ---
+        folders.sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }));
+
         if (folders.length === 0) {
             folderListDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">폴더가 없습니다.</div>';
             return;
         }
+
         folders.forEach(folder => {
             const details = document.createElement('details');
             details.open = true;
@@ -1080,6 +1097,10 @@
             const groupContainer = document.createElement('div');
             groupContainer.className = 'group-container';
             const groupsInFolder = groups.filter(g => g.folderId === folder.id);
+
+            // --- [수정] 그룹 자동 정렬 (숫자 > 가나다 순) ---
+            groupsInFolder.sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }));
+
             if (groupsInFolder.length > 0) {
                 groupsInFolder.forEach(group => {
                     const div = document.createElement('div');

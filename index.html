@@ -1071,10 +1071,31 @@
         if (!map) return;
         markers.forEach(marker => marker.setMap(null));
         markers = [];
+
+        // --- [수정 시작] 상세 필터 값 가져오기 ---
+        const colorFilterValue = document.getElementById('colorFilter').value;
+        const gradeFilterValue = document.getElementById('gradeFilter').value;
+        // --- [수정 끝] ---
+
         const visibleTrees = trees.filter(tree => {
+            // --- [수정 시작] 필터 로직 추가 ---
+            // 1. 그룹 체크박스 확인 (기존 로직)
             const group = groups.find(g => g.id === tree.groupId);
-            return group && group.visible;
+            if (!group || !group.visible) {
+                return false;
+            }
+
+            // 2. 색상 필터 확인
+            const colorMatch = !colorFilterValue || tree.color === colorFilterValue;
+
+            // 3. 등급 필터 확인
+            const gradeMatch = !gradeFilterValue || tree.grade === gradeFilterValue;
+
+            // 모든 조건을 만족해야 true 반환
+            return colorMatch && gradeMatch;
+            // --- [수정 끝] ---
         });
+
         visibleTrees.forEach(tree => {
             if (typeof tree.lat !== 'number' || typeof tree.lng !== 'number') return;
             const position = new kakao.maps.LatLng(tree.lat, tree.lng);
@@ -1308,6 +1329,7 @@
     function filterAndSortTrees() {
         currentTreePage = 1;
         updateTreeList();
+        updateMapMarkers(); // --- [수정] 필터 변경 시 지도도 업데이트 ---
     }
     function openTreeModal(treeId = null) {
         currentTreeId = treeId;

@@ -600,7 +600,7 @@
                     } else if (error.code === 'auth/invalid-email') {
                         errorMessage = '올바른 이메일 형식이 아닙니다.';
                     } else if (error.code === 'auth/weak-password') {
-                        errorMessage = '비밀번호가 너무 약합니다. 더 강한 비밀번호를 사용해주세요.';
+                        errorMessage = '비밀번호가 너무 약습니다. 더 강한 비밀번호를 사용해주세요.';
                     }
                     showError('signupError', errorMessage);
                 });
@@ -609,5 +609,43 @@
         document.getElementById('logoutBtn').addEventListener('click', () => {
             if (confirm('로그아웃 하시겠습니까?')) {
                 auth.signOut();
+            }
+        });
+
+        // --- 기존 이벤트 리스너들 ---
+        const leftSidebar = document.getElementById('left-sidebar');
+        const rightSidebar = document.getElementById('right-sidebar');
+        const backdrop = document.getElementById('backdrop');
+        document.getElementById('toggleLeftSidebarBtn').addEventListener('click', () => {
+            leftSidebar.classList.toggle('visible');
+            backdrop.style.display = leftSidebar.classList.contains('visible') ? 'block' : 'none';
+        });
+        document.getElementById('toggleRightSidebarBtn').addEventListener('click', () => {
+            rightSidebar.classList.toggle('visible');
+            backdrop.style.display = rightSidebar.classList.contains('visible') ? 'block' : 'none';
+        });
+        backdrop.addEventListener('click', () => {
+            leftSidebar.classList.remove('visible');
+            rightSidebar.classList.remove('visible');
+            backdrop.style.display = 'none';
+        });
+        document.getElementById('createFolderBtn').addEventListener('click', createFolder);
+        document.getElementById('createGroupBtn').addEventListener('click', createGroup);
+        document.getElementById('exportDataBtn').addEventListener('click', exportData);
+        document.getElementById('importDataBtn').addEventListener('click', () => document.getElementById('excelImport').click());
+        document.getElementById('excelImport').addEventListener('change', importData);
+        document.getElementById('roadmapBtn').addEventListener('click', () => changeMapType('ROADMAP'));
+        document.getElementById('satelliteBtn').addEventListener('click', () => changeMapType('HYBRID'));
+        document.getElementById('searchBtn').addEventListener('click', searchLocation);
+        document.getElementById('searchInput').addEventListener('keypress', handleSearchKeypress);
+        document.getElementById('colorFilter').addEventListener('change', filterAndSortTrees);
+        document.getElementById('sortFilter').addEventListener('change', filterAndSortTrees);
+        document.getElementById('folderForm').addEventListener('submit', handleFolderFormSubmit);
+        document.getElementById('groupForm').addEventListener('submit', handleGroupFormSubmit);
+        document.getElementById('treeForm').addEventListener('submit', handleTreeFormSubmit);
+        document.getElementById('myLocationBtn').addEventListener('click', showMyLocation);
+        window.addEventListener('click', (event) => {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
             }
         });

@@ -92,36 +92,36 @@
         }
         .group-item.active { background: #007bff; color: white; border-color: #007bff; }
         
-        /* --- [수정] 전체 UI 콤팩트하게 조정 --- */
+        /* --- [수정] 전체 UI 콤팩트하게 조정 (0.8배) --- */
         /* 폴더/그룹 목록 */
         .folder-list summary {
-            padding: 5px 8px;
-            font-size: 12px;
+            padding: 4px 6px; /* 여백 축소 */
+            font-size: 10px;  /* 글씨 크기 축소 */
         }
         .folder-list .group-item {
-            padding: 5px 10px;
-            margin: 2px 0;
-            font-size: 12px;
+            padding: 4px 8px; /* 여백 축소 */
+            margin: 1px 0;    /* 여백 축소 */
+            font-size: 10px;  /* 글씨 크기 축소 */
         }
         .folder-list .group-name {
             line-height: 1.2;
         }
 
         /* 대상목 목록 */
-        .tree-list .group-item { 
-            font-size: 11px; 
-            padding: 6px 8px; 
-            margin: 2px 0;
-            cursor: pointer; 
+        .tree-list .group-item {
+            font-size: 10px;  /* 기본 글씨 크기 축소 */
+            padding: 5px 7px; /* 여백 축소 */
+            margin: 1px 0;    /* 여백 축소 */
+            cursor: pointer;
         }
-        .tree-list .group-item .small-text { 
-            font-size: 10px; 
-            color: #6c757d; /* 약간 연하게 */
+        .tree-list .group-item .small-text {
+            font-size: 9px;   /* 보조 글씨 크기 축소 */
+            color: #6c757d;
             line-height: 1.3;
             margin-top: 2px;
-            white-space: nowrap; /* 한 줄로 표시 */
-            overflow: hidden; /* 넘치는 텍스트 숨기기 */
-            text-overflow: ellipsis; /* 넘치는 텍스트 ... 처리 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .action-btn {
@@ -283,7 +283,6 @@
                 font-size: 11px;
                 padding: 5px 2px;
             }
-            /* 모바일 뷰에서도 콤팩트하게 */
             .tree-list .group-item {
                 padding: 5px 8px;
             }
@@ -1199,7 +1198,6 @@
             const div = document.createElement('div');
             div.className = 'group-item';
 
-            // --- [수정 시작] 상세 정보 한 줄로 표시 ---
             let details = [];
             if (tree.diameter) details.push(`흉고: ${tree.diameter}cm`);
             if (tree.height) details.push(`수고: ${tree.height}m`);
@@ -1213,7 +1211,6 @@
                     <div class="small-text">${details.join(', ')}</div>
                 </div>
             </div>`;
-            // --- [수정 끝] ---
 
             div.addEventListener('click', () => panToTree(tree.id));
             div.addEventListener('contextmenu', e => { e.preventDefault(); openTreeModal(tree.id); });

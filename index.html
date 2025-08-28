@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>수목 관리 시스템</title>
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c271d3d7aa3cd2e6702892fa92c3b313&libraries=services&autoload=false"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -197,35 +197,49 @@
                 --tree-sidebar-width: 280px;
             }
             .sidebar {
-                position: fixed; 
-                top: 52px; /* 수정: 상단 바 높이만큼(52px) 아래로 이동 */
-                left: 0; 
-                height: calc(100% - 52px); /* 수정: 상단 바 높이를 뺀 만큼만 차지 */
-                transform: translateX(calc(var(--sidebar-width) * -1)); 
+                position: fixed;
+                top: 52px; /* 수정: 상단 바 높이만큼 아래에서 시작 */
+                left: 0;
+                height: calc(100% - 52px); /* 수정: 상단 바 높이를 뺀 나머지 높이 차지 */
+                transform: translateX(calc(var(--sidebar-width) * -1));
                 box-shadow: 2px 0 10px rgba(0,0,0,0.1);
             }
             .tree-sidebar {
-                position: fixed; 
-                top: 52px; /* 수정: 상단 바 높이만큼(52px) 아래로 이동 */
-                right: 0; 
-                height: calc(100% - 52px); /* 수정: 상단 바 높이를 뺀 만큼만 차지 */
-                transform: translateX(var(--tree-sidebar-width)); 
+                position: fixed;
+                top: 52px; /* 수정: 상단 바 높이만큼 아래에서 시작 */
+                right: 0;
+                height: calc(100% - 52px); /* 수정: 상단 바 높이를 뺀 나머지 높이 차지 */
+                transform: translateX(var(--tree-sidebar-width));
                 box-shadow: -2px 0 10px rgba(0,0,0,0.1);
                 border-left: none;
             }
             .sidebar.visible, .tree-sidebar.visible { transform: translateX(0); }
             .main-content { height: 100%; }
-            .controls { top: 60px; }
+            .controls {
+                top: 62px; /* 수정: 상단 바(52px) 아래에 위치하도록 조정 */
+            }
             .mobile-controls {
-                position: fixed; top: 0; left: 0; width: 100%;
-                display: flex; justify-content: space-between; align-items: center;
-                background: #2c3e50; color: white; padding: 10px;
-                z-index: 4000; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-                height: 52px; /* 상단 바 높이 고정 */
+                position: fixed;
+                top: 0; /* 상단 위치 고정 */
+                left: 0;
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #2c3e50;
+                color: white;
+                padding: 10px;
+                z-index: 4000;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                height: 52px; /* 높이 명시 */
             }
             .mobile-btn {
-                background: none; border: 1px solid white; color: white;
-                padding: 8px 12px; border-radius: 4px; font-size: 13px;
+                background: none;
+                border: 1px solid white;
+                color: white;
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-size: 13px;
             }
             .coord-inputs { flex-direction: column; }
             .coord-inputs input { width: 100%; }
@@ -576,11 +590,11 @@
         const backdrop = document.getElementById('backdrop');
         document.getElementById('toggleLeftSidebarBtn').addEventListener('click', () => {
             leftSidebar.classList.toggle('visible');
-            backdrop.style.display = leftSidebar.classList.contains('visible') ? 'block' : 'none';
+            backdrop.style.display = leftSidebar.classList.contains('visible') || rightSidebar.classList.contains('visible') ? 'block' : 'none';
         });
         document.getElementById('toggleRightSidebarBtn').addEventListener('click', () => {
             rightSidebar.classList.toggle('visible');
-            backdrop.style.display = rightSidebar.classList.contains('visible') ? 'block' : 'none';
+            backdrop.style.display = leftSidebar.classList.contains('visible') || rightSidebar.classList.contains('visible') ? 'block' : 'none';
         });
         backdrop.addEventListener('click', () => {
             leftSidebar.classList.remove('visible');

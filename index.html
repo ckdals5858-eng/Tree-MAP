@@ -198,23 +198,21 @@
             align-items: flex-start;
             gap: 8px;
         }
-        /* --- [수정] 필터 그룹 스타일 --- */
         .filter-group {
             display: flex;
-            flex-wrap: nowrap; /* 줄바꿈 방지 */
-            overflow-x: auto;  /* 내용이 넘칠 경우 가로 스크롤 생성 */
-            padding-bottom: 5px; /* 스크롤바를 위한 약간의 여백 */
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 5px;
             gap: 4px 8px;
             align-items: center;
             font-size: 11px;
             width: 100%;
         }
-        /* --- [수정 끝] --- */
         .filter-group .filter-title {
             font-weight: bold;
             font-size: 12px;
             margin-right: 5px;
-            white-space: nowrap; /* 타이틀 줄바꿈 방지 */
+            white-space: nowrap;
         }
         .filter-group label {
             display: flex;
@@ -224,7 +222,7 @@
             padding: 2px 4px;
             border-radius: 3px;
             transition: background-color 0.2s;
-            white-space: nowrap; /* 라벨 줄바꿈 방지 */
+            white-space: nowrap;
         }
         .filter-group label:hover {
              background-color: #e9ecef;
@@ -537,12 +535,6 @@
     </div>
 
     <script>
-    // --- (이전 코드와 동일한 부분은 생략) ---
-    // (실제 코드에는 모든 스크립트가 포함되어 있습니다.)
-
-    // --- 스크립트의 전체 내용은 이전과 거의 동일하며,
-    // 아래 명시된 함수들만 수정되었거나 추가되었습니다. ---
-    
     const firebaseConfig = {
         apiKey: "AIzaSyBw6TBu2uPgSBW2_E_PUIs-uI_MZVs2hlA",
         authDomain: "treemap-46453.firebaseapp.com",
@@ -608,9 +600,11 @@
             alert("데이터를 불러오는 데 실패했습니다.");
         }
     }
-
+    
+    // --- [수정] 체크박스 필터 헬퍼 함수 (안전장치 추가) ---
     function setupCheckboxFilter(containerId) {
         const container = document.getElementById(containerId);
+        if (!container) return; // 안전장치: 해당 ID의 컨테이너가 없으면 함수 종료
         container.addEventListener('change', (e) => {
             if (e.target.type !== 'checkbox') return;
             const allCheckbox = container.querySelector('input[value="all"]');
@@ -630,26 +624,22 @@
 
     function getSelectedFilterValues(containerId) {
         const container = document.getElementById(containerId);
+        if (!container) return []; // 안전장치: 컨테이너가 없으면 빈 배열 반환
         const allCheckbox = container.querySelector('input[value="all"]');
         if (allCheckbox && allCheckbox.checked) return [];
         const checkedBoxes = container.querySelectorAll('input[type="checkbox"]:checked');
         return Array.from(checkedBoxes).map(cb => cb.value);
     }
+    // --- [수정 끝] ---
 
     function setupEventListeners() {
-        document.getElementById('loginBtn').addEventListener('click', () => {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            if (!email || !password) return alert('이메일과 비밀번호를 입력해주세요.');
-            auth.signInWithEmailAndPassword(email, password).catch(error => alert(`로그인 실패: ${error.message}`));
-        });
+        // ... (로그인/가입 등 이전과 동일한 이벤트 리스너 생략) ...
+        document.getElementById('loginBtn').addEventListener('click', () => { const email = document.getElementById('loginEmail').value; const password = document.getElementById('loginPassword').value; if (!email || !password) return alert('이메일과 비밀번호를 입력해주세요.'); auth.signInWithEmailAndPassword(email, password).catch(error => alert(`로그인 실패: ${error.message}`)); });
         document.getElementById('openSignupModalBtn').addEventListener('click', () => { document.getElementById('signup-modal').style.display = 'flex'; });
         document.getElementById('cancelSignupBtn').addEventListener('click', () => { document.getElementById('signup-modal').style.display = 'none'; });
         document.getElementById('signupForm').addEventListener('submit', (e) => { e.preventDefault(); const email = document.getElementById('signupEmail').value; const password = document.getElementById('signupPassword').value; const passwordConfirm = document.getElementById('signupPasswordConfirm').value; if (!email || !password || !passwordConfirm) return alert('모든 필드를 입력해주세요.'); if (password.length < 6) return alert('비밀번호는 6자리 이상이어야 합니다.'); if (password !== passwordConfirm) return alert('비밀번호가 일치하지 않습니다.'); auth.createUserWithEmailAndPassword(email, password).then(() => alert('회원가입 성공! 자동으로 로그인됩니다.')).catch(error => alert(`회원가입 실패: ${error.message}`)); });
         document.getElementById('logoutBtn').addEventListener('click', () => { if (confirm('로그아웃 하시겠습니까?')) auth.signOut(); });
-        const leftSidebar = document.getElementById('left-sidebar');
-        const rightSidebar = document.getElementById('right-sidebar');
-        const backdrop = document.getElementById('backdrop');
+        const leftSidebar = document.getElementById('left-sidebar'); const rightSidebar = document.getElementById('right-sidebar'); const backdrop = document.getElementById('backdrop');
         document.getElementById('toggleLeftSidebarBtn').addEventListener('click', () => { leftSidebar.classList.toggle('visible'); backdrop.style.display = leftSidebar.classList.contains('visible') || rightSidebar.classList.contains('visible') ? 'block' : 'none'; });
         document.getElementById('toggleRightSidebarBtn').addEventListener('click', () => { rightSidebar.classList.toggle('visible'); backdrop.style.display = leftSidebar.classList.contains('visible') || rightSidebar.classList.contains('visible') ? 'block' : 'none'; });
         backdrop.addEventListener('click', () => { leftSidebar.classList.remove('visible'); rightSidebar.classList.remove('visible'); backdrop.style.display = 'none'; });
@@ -664,9 +654,11 @@
         document.getElementById('searchInput').addEventListener('keypress', handleSearchKeypress);
         document.getElementById('coordSearchBtn').addEventListener('click', searchByCoords);
         document.querySelectorAll('input[name="searchType"]').forEach(radio => { radio.addEventListener('change', toggleSearchType); });
+
         setupCheckboxFilter('colorFilterContainer');
         setupCheckboxFilter('gradeFilterContainer');
         document.getElementById('sortFilter').addEventListener('change', filterAndSortTrees);
+        
         document.getElementById('folderForm').addEventListener('submit', handleFolderFormSubmit);
         document.getElementById('groupForm').addEventListener('submit', handleGroupFormSubmit);
         document.getElementById('treeForm').addEventListener('submit', handleTreeFormSubmit);
@@ -674,98 +666,11 @@
         window.addEventListener('click', (event) => { if (event.target.classList.contains('modal')) event.target.style.display = 'none'; });
     }
 
-    function updateMapMarkers() {
-        if (!map) return;
-        markers.forEach(marker => marker.setMap(null));
-        markers = [];
-        const selectedColors = getSelectedFilterValues('colorFilterContainer');
-        const selectedGrades = getSelectedFilterValues('gradeFilterContainer');
-        const visibleTrees = trees.filter(tree => {
-            const group = groups.find(g => g.id === tree.groupId);
-            if (!group || !group.visible) return false;
-            const colorMatch = selectedColors.length === 0 || selectedColors.includes(tree.color);
-            const gradeMatch = selectedGrades.length === 0 || selectedGrades.includes(tree.grade);
-            return colorMatch && gradeMatch;
-        });
-        visibleTrees.forEach(tree => {
-            if (typeof tree.lat !== 'number' || typeof tree.lng !== 'number') return;
-            const position = new kakao.maps.LatLng(tree.lat, tree.lng);
-            const imageSrc = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="26" viewBox="0 0 20 26"><path d="M10 0C4.477 0 0 4.477 0 10c0 7.5 10 16 10 16s10-8.5 10-16C20 4.477 15.523 0 10 0z" fill="${colorMap[tree.color] || colorMap.gray}"/><circle cx="10" cy="10" r="6" fill="white"/><text x="10" y="14" text-anchor="middle" font-size="8" font-weight="bold" fill="black">${tree.number}</text></svg>`)}`;
-            const markerImage = new kakao.maps.MarkerImage(imageSrc, new kakao.maps.Size(20, 26), {offset: new kakao.maps.Point(10, 26)});
-            const marker = new kakao.maps.Marker({ position, image: markerImage });
-            marker.setMap(map);
-            markers.push(marker);
-            kakao.maps.event.addListener(marker, 'click', () => editTree(tree.id));
-            kakao.maps.event.addListener(marker, 'rightclick', (e) => { e.preventDefault(); deleteTree(tree.id); });
-        });
-    }
-
-    function updateTreeList() {
-        const treeList = document.getElementById('treeList');
-        const treePagination = document.getElementById('treePagination');
-        const rightSidebarTitle = document.getElementById('rightSidebarTitle');
-        const treeListInfo = document.getElementById('treeListInfo');
-        treeList.innerHTML = '';
-        treePagination.innerHTML = '';
-        if (!currentGroup) {
-            treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">그룹을 선택하세요.</div>';
-            rightSidebarTitle.textContent = '대상목 리스트';
-            treeListInfo.textContent = '';
-            return;
-        }
-        const folder = folders.find(f => f.id === currentGroup.folderId);
-        const folderName = folder ? folder.name : '미지정';
-        rightSidebarTitle.innerHTML = `대상목 리스트 <small style="display: block; font-size: 13px; color: #555; font-weight: normal; margin-top: 4px;">(${folderName} / ${currentGroup.name})</small>`;
-        let displayTrees = trees.filter(tree => tree.groupId === currentGroup.id);
-        const selectedColors = getSelectedFilterValues('colorFilterContainer');
-        if (selectedColors.length > 0) {
-            displayTrees = displayTrees.filter(tree => selectedColors.includes(tree.color));
-        }
-        const selectedGrades = getSelectedFilterValues('gradeFilterContainer');
-        if (selectedGrades.length > 0) {
-            displayTrees = displayTrees.filter(tree => selectedGrades.includes(tree.grade));
-        }
-        treeListInfo.textContent = `총 ${displayTrees.length}개의 대상목`;
-        const sortFilter = document.getElementById('sortFilter').value;
-        displayTrees.sort((a, b) => {
-            if (sortFilter === 'number_desc') return String(b.number).localeCompare(String(a.number), undefined, {numeric: true});
-            return String(a.number).localeCompare(String(b.number), undefined, {numeric: true});
-        });
-        if (displayTrees.length === 0) {
-            treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">표시할 수목이 없습니다.</div>';
-            return;
-        }
-        const totalPages = Math.ceil(displayTrees.length / treesPerPage);
-        const startIndex = (currentTreePage - 1) * treesPerPage;
-        const paginatedTrees = displayTrees.slice(startIndex, startIndex + treesPerPage);
-        if (totalPages > 1) {
-            let paginationHTML = `<span class="page-info">${currentTreePage} / ${totalPages}</span>`;
-            if (currentTreePage > 1) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage - 1})">이전</button>`;
-            const startPage = Math.max(1, currentTreePage - 2);
-            const endPage = Math.min(totalPages, currentTreePage + 2);
-            for (let i = startPage; i <= endPage; i++) {
-                paginationHTML += `<button class="page-btn ${i === currentTreePage ? 'active' : ''}" onclick="changeTreePage(${i})">${i}</button>`;
-            }
-            if (currentTreePage < totalPages) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage + 1})">다음</button>`;
-            treePagination.innerHTML = paginationHTML;
-        }
-        paginatedTrees.forEach(tree => {
-            const div = document.createElement('div');
-            div.className = 'group-item';
-            let details = [];
-            if (tree.diameter) details.push(`흉고: ${tree.diameter}cm`);
-            if (tree.height) details.push(`수고: ${tree.height}m`);
-            if (tree.grade) details.push(`등급: ${tree.grade}`);
-            if (tree.notes) details.push(`비고: ${tree.notes}`);
-            div.innerHTML = `<div class="group-content"><div style="width:12px;height:12px;border-radius:50%;background:${colorMap[tree.color]||colorMap.gray};flex-shrink:0;margin-top:3px;"></div><div style="flex:1;min-width:0;"><div><strong>${tree.number}</strong> - ${tree.species}</div><div class="small-text">${details.join(', ')}</div></div></div>`;
-            div.addEventListener('click', () => panToTree(tree.id));
-            div.addEventListener('contextmenu', e => { e.preventDefault(); openTreeModal(tree.id); });
-            addLongPressListener(div, () => openTreeModal(tree.id));
-            treeList.appendChild(div);
-        });
-    }
-    
-    // 이 아래는 이전 코드와 동일한 나머지 함수들입니다.
+    // ... (이하 모든 함수는 이전 버전과 동일하게 유지됩니다) ...
+    // (이전 코드와 동일한 부분은 간결함을 위해 생략합니다. 실제 코드에는 포함되어 있습니다.)
+    function updateMapMarkers() { if (!map) return; markers.forEach(marker => marker.setMap(null)); markers = []; const selectedColors = getSelectedFilterValues('colorFilterContainer'); const selectedGrades = getSelectedFilterValues('gradeFilterContainer'); const visibleTrees = trees.filter(tree => { const group = groups.find(g => g.id === tree.groupId); if (!group || !group.visible) return false; const colorMatch = selectedColors.length === 0 || selectedColors.includes(tree.color); const gradeMatch = selectedGrades.length === 0 || selectedGrades.includes(tree.grade); return colorMatch && gradeMatch; }); visibleTrees.forEach(tree => { if (typeof tree.lat !== 'number' || typeof tree.lng !== 'number') return; const position = new kakao.maps.LatLng(tree.lat, tree.lng); const imageSrc = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="26" viewBox="0 0 20 26"><path d="M10 0C4.477 0 0 4.477 0 10c0 7.5 10 16 10 16s10-8.5 10-16C20 4.477 15.523 0 10 0z" fill="${colorMap[tree.color] || colorMap.gray}"/><circle cx="10" cy="10" r="6" fill="white"/><text x="10" y="14" text-anchor="middle" font-size="8" font-weight="bold" fill="black">${tree.number}</text></svg>`)}`; const markerImage = new kakao.maps.MarkerImage(imageSrc, new kakao.maps.Size(20, 26), {offset: new kakao.maps.Point(10, 26)}); const marker = new kakao.maps.Marker({ position, image: markerImage }); marker.setMap(map); markers.push(marker); kakao.maps.event.addListener(marker, 'click', () => editTree(tree.id)); kakao.maps.event.addListener(marker, 'rightclick', (e) => { e.preventDefault(); deleteTree(tree.id); }); }); }
+    function updateFolderList() { const folderListDiv = document.getElementById('folderList'); folderListDiv.innerHTML = ''; folders.sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true })); if (folders.length === 0) { folderListDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">폴더가 없습니다.</div>'; return; } folders.forEach(folder => { const details = document.createElement('details'); details.open = true; details.innerHTML = `<summary><span class="folder-name">${folder.name}</span><div class="folder-actions"><button class="action-btn edit-btn">수정</button><button class="action-btn delete-btn">삭제</button></div></summary>`; details.querySelector('.edit-btn').addEventListener('click', (e) => editFolder(folder.id, e)); details.querySelector('.delete-btn').addEventListener('click', (e) => deleteFolder(folder.id, e)); const groupContainer = document.createElement('div'); groupContainer.className = 'group-container'; const groupsInFolder = groups.filter(g => g.folderId === folder.id); groupsInFolder.sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true })); if (groupsInFolder.length > 0) { groupsInFolder.forEach(group => { const div = document.createElement('div'); div.className = `group-item ${group.active ? 'active' : ''}`; const treeCount = trees.filter(t => t.groupId === group.id).length; div.innerHTML = `<div class="group-content"><input type="checkbox" class="group-checkbox" ${group.visible ? 'checked' : ''}><div class="group-name">${group.name} (${treeCount}개)</div></div>`; div.querySelector('.group-name').addEventListener('click', () => selectGroup(group.id)); div.querySelector('.group-checkbox').addEventListener('change', (e) => toggleGroupVisibility(group.id, e.target.checked)); div.addEventListener('contextmenu', (e) => { e.preventDefault(); openGroupModal(group.id); }); addLongPressListener(div, () => openGroupModal(group.id)); groupContainer.appendChild(div); }); } else { groupContainer.innerHTML = '<div style="font-size: 11px; color: #888; padding: 5px 0;">그룹이 없습니다.</div>'; } details.appendChild(groupContainer); folderListDiv.appendChild(details); }); }
+    function updateTreeList() { const treeList = document.getElementById('treeList'); const treePagination = document.getElementById('treePagination'); const rightSidebarTitle = document.getElementById('rightSidebarTitle'); const treeListInfo = document.getElementById('treeListInfo'); treeList.innerHTML = ''; treePagination.innerHTML = ''; if (!currentGroup) { treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">그룹을 선택하세요.</div>'; rightSidebarTitle.textContent = '대상목 리스트'; treeListInfo.textContent = ''; return; } const folder = folders.find(f => f.id === currentGroup.folderId); const folderName = folder ? folder.name : '미지정'; rightSidebarTitle.innerHTML = `대상목 리스트 <small style="display: block; font-size: 13px; color: #555; font-weight: normal; margin-top: 4px;">(${folderName} / ${currentGroup.name})</small>`; let displayTrees = trees.filter(tree => tree.groupId === currentGroup.id); const selectedColors = getSelectedFilterValues('colorFilterContainer'); if (selectedColors.length > 0) { displayTrees = displayTrees.filter(tree => selectedColors.includes(tree.color)); } const selectedGrades = getSelectedFilterValues('gradeFilterContainer'); if (selectedGrades.length > 0) { displayTrees = displayTrees.filter(tree => selectedGrades.includes(tree.grade)); } treeListInfo.textContent = `총 ${displayTrees.length}개의 대상목`; const sortFilter = document.getElementById('sortFilter').value; displayTrees.sort((a, b) => { if (sortFilter === 'number_desc') return String(b.number).localeCompare(String(a.number), undefined, {numeric: true}); return String(a.number).localeCompare(String(b.number), undefined, {numeric: true}); }); if (displayTrees.length === 0) { treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">표시할 수목이 없습니다.</div>'; return; } const totalPages = Math.ceil(displayTrees.length / treesPerPage); const startIndex = (currentTreePage - 1) * treesPerPage; const paginatedTrees = displayTrees.slice(startIndex, startIndex + treesPerPage); if (totalPages > 1) { let paginationHTML = `<span class="page-info">${currentTreePage} / ${totalPages}</span>`; if (currentTreePage > 1) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage - 1})">이전</button>`; const startPage = Math.max(1, currentTreePage - 2); const endPage = Math.min(totalPages, currentTreePage + 2); for (let i = startPage; i <= endPage; i++) { paginationHTML += `<button class="page-btn ${i === currentTreePage ? 'active' : ''}" onclick="changeTreePage(${i})">${i}</button>`; } if (currentTreePage < totalPages) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage + 1})">다음</button>`; treePagination.innerHTML = paginationHTML; } paginatedTrees.forEach(tree => { const div = document.createElement('div'); div.className = 'group-item'; let details = []; if (tree.diameter) details.push(`흉고: ${tree.diameter}cm`); if (tree.height) details.push(`수고: ${tree.height}m`); if (tree.grade) details.push(`등급: ${tree.grade}`); if (tree.notes) details.push(`비고: ${tree.notes}`); div.innerHTML = `<div class="group-content"><div style="width:12px;height:12px;border-radius:50%;background:${colorMap[tree.color]||colorMap.gray};flex-shrink:0;margin-top:3px;"></div><div style="flex:1;min-width:0;"><div><strong>${tree.number}</strong> - ${tree.species}</div><div class="small-text">${details.join(', ')}</div></div></div>`; div.addEventListener('click', () => panToTree(tree.id)); div.addEventListener('contextmenu', e => { e.preventDefault(); openTreeModal(tree.id); }); addLongPressListener(div, () => openTreeModal(tree.id)); treeList.appendChild(div); }); }
     async function handleFolderFormSubmit(e) { e.preventDefault(); const folderName = document.getElementById('folderName').value.trim(); if (!folderName) return alert('폴더 이름을 입력해주세요.'); if (!currentUser) return; const folderData = { name: folderName }; try { if (currentFolderId) { await db.collection('users').doc(currentUser.uid).collection('folders').doc(currentFolderId).update(folderData); const folder = folders.find(f => f.id === currentFolderId); if (folder) folder.name = folderName; } else { const docRef = await db.collection('users').doc(currentUser.uid).collection('folders').add(folderData); folders.push({ id: docRef.id, ...folderData }); } updateFolderList(); closeFolderModal(); } catch (error) { console.error("폴더 저장 오류:", error); alert("폴더 저장에 실패했습니다."); } }
     async function deleteFolder(folderId, event) { event.stopPropagation(); if (!currentUser) return; const folder = folders.find(f => f.id === folderId); if (!folder) return; if (confirm(`"${folder.name}" 폴더를 삭제하시겠습니까?\n폴더 안의 모든 그룹과 수목 데이터가 영구적으로 삭제됩니다.`)) { const batch = db.batch(); const groupsToDelete = groups.filter(g => g.folderId === folderId); for (const group of groupsToDelete) { const treesInGroup = trees.filter(t => t.groupId === group.id); for (const tree of treesInGroup) { const treeRef = db.collection('users').doc(currentUser.uid).collection('trees').doc(tree.id); batch.delete(treeRef); } const groupRef = db.collection('users').doc(currentUser.uid).collection('groups').doc(group.id); batch.delete(groupRef); } const folderRef = db.collection('users').doc(currentUser.uid).collection('folders').doc(folderId); batch.delete(folderRef); try { await batch.commit(); const groupsToDeleteIds = groupsToDelete.map(g => g.id); trees = trees.filter(t => !groupsToDeleteIds.includes(t.groupId)); groups = groups.filter(g => g.folderId !== folderId); folders = folders.filter(f => f.id !== folderId); updateFolderList(); updateTreeList(); updateMapMarkers(); } catch (error) { console.error("폴더 삭제 오류:", error); alert("폴더 삭제에 실패했습니다."); } } }
     async function handleGroupFormSubmit(e) { e.preventDefault(); const groupName = document.getElementById('groupName').value.trim(); const folderId = document.getElementById('groupFolderSelect').value; if (!groupName || !folderId) return alert('모든 필드를 입력해주세요.'); if (!currentUser) return; const groupData = { name: groupName, folderId: folderId, active: false, visible: true }; try { if (currentGroupId) { await db.collection('users').doc(currentUser.uid).collection('groups').doc(currentGroupId).update({ name: groupName, folderId: folderId }); const group = groups.find(g => g.id === currentGroupId); if (group) { group.name = groupName; group.folderId = folderId; } } else { const docRef = await db.collection('users').doc(currentUser.uid).collection('groups').add(groupData); groups.push({ id: docRef.id, ...groupData }); } updateFolderList(); closeGroupModal(); } catch (error) { console.error("그룹 저장 오류:", error); alert("그룹 저장에 실패했습니다."); } }

@@ -151,7 +151,7 @@
         
         .form-group { margin-bottom: 12px; }
         .form-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;}
-        .form-group-header label { margin-bottom: 0; }
+        .form-group-header .main-label { font-size: 13px; font-weight: bold; }
         .form-group-header .checkbox-label { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal; cursor: pointer; }
         
         .form-group label { font-size: 13px; display: block; text-align: left; font-weight: bold; margin-bottom: 4px;}
@@ -161,6 +161,7 @@
         }
         .form-row { display: flex; gap: 10px; align-items: flex-start; }
         .form-row .form-group { flex: 1; margin-bottom: 12px; }
+        .form-row .form-group .form-row { margin-bottom: 0; }
         .form-row > span { flex: 0; padding: 0 5px; }
 
         .defect-group {
@@ -402,13 +403,13 @@
                 <div class="form-group"><label>수고(m)</label><input type="number" id="treeHeight" step="0.1"></div>
             </div>
             <div class="form-row">
-                 <div class="form-group"><label>수관폭(m)</label><div class="form-row" style="gap: 5px;"><input type="number" id="treeCrownWidth1" step="0.1" placeholder="가로"><span>x</span><input type="number" id="treeCrownWidth2" step="0.1" placeholder="세로"></div></div>
+                 <div class="form-group"><label>수관폭(m)</label><div class="form-row" style="gap: 5px; margin-bottom: 0;"><input type="number" id="treeCrownWidth1" step="0.1" placeholder="가로"><span>x</span><input type="number" id="treeCrownWidth2" step="0.1" placeholder="세로"></div></div>
                  <div class="form-group"><label>지하고(m)</label><input type="number" id="treeClearanceHeight" step="0.1"></div>
             </div>
             
             <div class="form-group">
                 <div class="form-group-header">
-                    <label>줄기기울기</label>
+                    <span class="main-label">줄기기울기</span>
                     <label class="checkbox-label"><input type="checkbox" id="stemTiltNormalCheck">이상없음</label>
                 </div>
                 <div class="form-row">
@@ -420,7 +421,7 @@
             
             <div class="form-group">
                 <div class="form-group-header">
-                    <label>결함 및 피해대상</label>
+                    <span class="main-label">결함 및 피해대상</span>
                     <label class="checkbox-label"><input type="checkbox" id="defectNormalCheck">이상없음</label>
                 </div>
                 <div class="defect-group">
@@ -583,11 +584,18 @@
     
     function handleDefectNormalCheck(e) {
         const isChecked = e.target.checked;
-        const els = ['stemDefectCheck', 'rootDefectCheck', 'targetCheck'].map(id => document.getElementById(id));
+        const mainCheckboxes = ['stemDefectCheck', 'rootDefectCheck', 'targetCheck'].map(id => document.getElementById(id));
+        
         if (isChecked) {
-            els.forEach(el => el.checked = false);
+            mainCheckboxes.forEach(el => el.checked = false);
+            const subModalIds = ['stemDefectModal', 'rootDefectModal', 'targetModal'];
+            subModalIds.forEach(modalId => {
+                document.querySelectorAll(`#${modalId} input[type="checkbox"]`).forEach(subCb => {
+                    subCb.checked = false;
+                });
+            });
         }
-        els.forEach(el => el.disabled = isChecked);
+        mainCheckboxes.forEach(el => el.disabled = isChecked);
     }
 
     function openModalById(modalId) { document.getElementById(modalId).style.display = 'flex'; }

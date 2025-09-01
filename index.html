@@ -148,7 +148,12 @@
              max-width: 350px; z-index: 5001;
         }
         .form-group { margin-bottom: 12px; }
-        .form-group label { font-size: 13px; display: block; margin-bottom: 5px; text-align: left; font-weight: bold;}
+        .form-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;}
+        .form-group-header label { margin-bottom: 0; }
+        .form-group-header .checkbox-label { font-size: 12px; font-weight: normal; cursor: pointer; }
+        .form-group-header .checkbox-label input { margin-right: 4px; }
+        
+        .form-group label { font-size: 13px; display: block; text-align: left; font-weight: bold;}
         .form-group input, .form-group select, .form-group textarea {
             width: 100%; padding: 8px; border: 1px solid #ddd;
             border-radius: 3px; font-size: 14px;
@@ -163,8 +168,10 @@
         }
         .defect-group label { font-weight: normal; font-size: 12px; display: flex; align-items: center; gap: 4px; cursor:pointer;}
         .defect-group input { width: auto; }
-        .sub-modal .form-group { display: flex; align-items: center; gap: 10px; margin-bottom: 8px;}
-        .sub-modal .form-group label { margin-bottom: 0; flex-shrink: 0;}
+        
+        .sub-modal .form-group { display: flex; align-items: center; gap: 10px; margin-bottom: 15px;}
+        .sub-modal .form-group:last-child { margin-bottom: 0; }
+        .sub-modal .form-group label { margin-bottom: 0; flex:1; font-weight: normal;}
         .sub-modal .form-group input[type="checkbox"] { width: auto; transform: scale(1.2); }
         .sub-modal textarea { height: 60px; }
 
@@ -389,16 +396,31 @@
             <div class="form-row"><div class="form-group"><label>흉고(cm)</label><input type="number" id="treeDiameter" step="0.1"></div><div class="form-group"><label>수고(m)</label><input type="number" id="treeHeight" step="0.1"></div></div>
             <div class="form-group"><label>수관폭(m)</label><div class="form-row"><input type="number" id="treeCrownWidth1" step="0.1" placeholder="가로"><span>x</span><input type="number" id="treeCrownWidth2" step="0.1" placeholder="세로"></div></div>
             <div class="form-group"><label>지하고(m)</label><input type="number" id="treeClearanceHeight" step="0.1"></div>
-            <div class="form-group"><label>줄기기울기</label><div class="form-row">
-                <select id="stemTiltDirection"><option value="">방향</option><option value="차">차</option><option value="인">인</option><option value="진">진</option><option value="역">역</option></select>
-                <select id="stemTiltForm"><option value="">형태</option><option value="정상">정상</option><option value="만곡">만곡</option><option value="선">선</option><option value="활">활</option></select>
-                <input type="number" id="stemTiltAngle" placeholder="각도(°)">
-            </div></div>
-            <div class="form-group"><label>결함 및 피해대상</label><div class="defect-group">
-                <label><input type="checkbox" id="stemDefectCheck">줄기부 결함</label>
-                <label><input type="checkbox" id="rootDefectCheck">뿌리부 결함</label>
-                <label><input type="checkbox" id="targetCheck">피해대상물</label>
-            </div></div>
+            
+            <div class="form-group">
+                <div class="form-group-header">
+                    <label>줄기기울기</label>
+                    <label class="checkbox-label"><input type="checkbox" id="stemTiltNormalCheck">이상없음</label>
+                </div>
+                <div class="form-row">
+                    <select id="stemTiltDirection"><option value="">방향</option><option value="정상">정상</option><option value="차">차</option><option value="인">인</option><option value="진">진</option><option value="역">역</option></select>
+                    <select id="stemTiltForm"><option value="">형태</option><option value="정상">정상</option><option value="만곡">만곡</option><option value="선">선</option><option value="활">활</option></select>
+                    <input type="number" id="stemTiltAngle" placeholder="각도(°)">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <div class="form-group-header">
+                    <label>결함 및 피해대상</label>
+                    <label class="checkbox-label"><input type="checkbox" id="defectNormalCheck">이상없음</label>
+                </div>
+                <div class="defect-group">
+                    <label><input type="checkbox" id="stemDefectCheck">줄기부 결함</label>
+                    <label><input type="checkbox" id="rootDefectCheck">뿌리부 결함</label>
+                    <label><input type="checkbox" id="targetCheck">피해대상물</label>
+                </div>
+            </div>
+
             <div class="form-group"><label>등급</label><input type="text" id="treeGrade" placeholder="등급을 입력하세요"></div>
             <div class="form-group"><label>비고</label><textarea id="treeNotes" rows="2"></textarea></div>
             <div class="form-group"><label>색상 선택</label><div class="color-selector">
@@ -484,9 +506,7 @@
                 document.getElementById('user-status').textContent = '로그인이 필요합니다.';
                 document.getElementById('logoutBtn').style.display = 'none';
                 folders = []; groups = []; trees = []; currentGroup = null;
-                updateFolderList();
-                updateTreeList();
-                updateMapMarkers();
+                updateFolderList(); updateTreeList(); updateMapMarkers();
             }
         });
     });
@@ -530,7 +550,9 @@
         document.getElementById('stemDefectCheck').addEventListener('change', e => { if(e.target.checked) openModalById('stemDefectModal'); });
         document.getElementById('rootDefectCheck').addEventListener('change', e => { if(e.target.checked) openModalById('rootDefectModal'); });
         document.getElementById('targetCheck').addEventListener('change', e => { if(e.target.checked) openModalById('targetModal'); });
-        
+        document.getElementById('stemTiltNormalCheck').addEventListener('change', handleStemTiltNormalCheck);
+        document.getElementById('defectNormalCheck').addEventListener('change', handleDefectNormalCheck);
+
         window.addEventListener('click', (event) => { if (event.target.classList.contains('modal')) event.target.style.display = 'none'; });
     }
 
@@ -541,6 +563,24 @@
         btn.textContent = content.classList.contains('hidden') ? '[ ▲ 검색창 보이기 ]' : '[ ▼ 검색창 숨기기 ]';
     }
     
+    function handleStemTiltNormalCheck(e) {
+        const isChecked = e.target.checked;
+        const els = ['stemTiltDirection', 'stemTiltForm', 'stemTiltAngle'].map(id => document.getElementById(id));
+        if (isChecked) {
+            els[0].value = '정상'; els[1].value = '정상'; els[2].value = '0';
+        }
+        els.forEach(el => el.disabled = isChecked);
+    }
+    
+    function handleDefectNormalCheck(e) {
+        const isChecked = e.target.checked;
+        const els = ['stemDefectCheck', 'rootDefectCheck', 'targetCheck'].map(id => document.getElementById(id));
+        if (isChecked) {
+            els.forEach(el => el.checked = false);
+        }
+        els.forEach(el => el.disabled = isChecked);
+    }
+
     function openModalById(modalId) { document.getElementById(modalId).style.display = 'flex'; }
     function closeModalById(modalId) { document.getElementById(modalId).style.display = 'none'; }
     
@@ -593,9 +633,7 @@
                 const docRef = await db.collection('users').doc(currentUser.uid).collection('trees').add(treeData);
                 trees.push({ id: docRef.id, ...treeData });
             }
-            updateFolderList();
-            updateTreeList();
-            updateMapMarkers();
+            updateFolderList(); updateTreeList(); updateMapMarkers();
             closeModalById('treeModal');
         } catch (error) {
             console.error("Firestore 저장 실패 원인:", error);
@@ -620,18 +658,28 @@
         document.getElementById('treeForm').reset();
         ['stemDefect_notes', 'rootDefect_notes', 'target_notes'].forEach(id => document.getElementById(id).value = '');
         ['stemDefectModal', 'rootDefectModal', 'targetModal'].forEach(id => document.querySelectorAll(`#${id} input[type="checkbox"]`).forEach(cb => cb.checked = false));
-
+        handleStemTiltNormalCheck({target: {checked: false}});
+        handleDefectNormalCheck({target: {checked: false}});
+        
         if (treeId) {
             const tree = trees.find(t => t.id === treeId);
             if (tree) {
                 Object.keys(tree).forEach(key => {
-                    const el = document.getElementById(key.startsWith('tree') ? key : `tree${key.charAt(0).toUpperCase() + key.slice(1)}`) || document.getElementById(key);
+                    const el = document.getElementById(key);
                     if (el) {
                         if (el.type === 'checkbox') el.checked = tree[key] || false;
                         else el.value = tree[key] || '';
                     }
                 });
                 
+                const isTiltNormal = tree.stemTiltDirection === '정상' && tree.stemTiltForm === '정상' && (tree.stemTiltAngle === 0 || tree.stemTiltAngle === null);
+                document.getElementById('stemTiltNormalCheck').checked = isTiltNormal;
+                handleStemTiltNormalCheck({target: {checked: isTiltNormal}});
+                
+                const isDefectNormal = !tree.hasStemDefect && !tree.hasRootDefect && !tree.hasTarget;
+                document.getElementById('defectNormalCheck').checked = isDefectNormal;
+                handleDefectNormalCheck({target: {checked: isDefectNormal}});
+
                 const colorEl = document.querySelector(`#treeModal .color-option[data-color="${tree.color}"]`) || document.querySelector('#treeModal .color-option');
                 selectModalColor(colorEl, tree.color);
                 deleteBtn.style.display = 'inline-block';
@@ -682,10 +730,7 @@
                 const workbook = XLSX.read(data, {type: 'array'});
                 const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 if (json.length === 0) return alert("엑셀 파일에 데이터가 없습니다.");
-                
-                if (!confirm("기존 데이터를 유지하고 새로운 데이터를 추가하시겠습니까?")) {
-                    return alert("안전상의 이유로 전체 삭제 후 가져오기 기능은 비활성화되어 있습니다. 추가 모드로만 진행됩니다.");
-                }
+                if (!confirm("기존 데이터를 유지하고 새로운 데이터를 추가하시겠습니까?")) return;
 
                 for (const row of json) {
                     const folderName = row['폴더명'] || '미분류 폴더';
@@ -728,8 +773,7 @@
                 console.error("엑셀 파일 처리 중 오류:", error);
                 alert("엑셀 파일을 처리하는 중 오류가 발생했습니다.");
             } finally {
-                event.target.value = '';
-                loadUserData();
+                event.target.value = ''; loadUserData();
             }
         };
         reader.readAsArrayBuffer(file);

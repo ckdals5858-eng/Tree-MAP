@@ -147,11 +147,12 @@
         .sub-modal .modal-content {
              max-width: 350px; z-index: 5001;
         }
+        .sub-modal .modal-content h4 { margin-bottom: 20px; }
+        
         .form-group { margin-bottom: 12px; }
         .form-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;}
         .form-group-header label { margin-bottom: 0; }
-        .form-group-header .checkbox-label { font-size: 12px; font-weight: normal; cursor: pointer; }
-        .form-group-header .checkbox-label input { margin-right: 4px; }
+        .form-group-header .checkbox-label { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal; cursor: pointer; }
         
         .form-group label { font-size: 13px; display: block; text-align: left; font-weight: bold;}
         .form-group input, .form-group select, .form-group textarea {
@@ -664,15 +665,40 @@
         if (treeId) {
             const tree = trees.find(t => t.id === treeId);
             if (tree) {
-                Object.keys(tree).forEach(key => {
-                    const el = document.getElementById(key);
-                    if (el) {
-                        if (el.type === 'checkbox') el.checked = tree[key] || false;
-                        else el.value = tree[key] || '';
-                    }
-                });
+                // 명시적으로 모든 필드 값 채우기 (수정 오류 해결)
+                document.getElementById('treeNumber').value = tree.number || '';
+                document.getElementById('treeSpecies').value = tree.species || '';
+                document.getElementById('treeDiameter').value = tree.diameter || '';
+                document.getElementById('treeHeight').value = tree.height || '';
+                document.getElementById('treeCrownWidth1').value = tree.crownWidth1 || '';
+                document.getElementById('treeCrownWidth2').value = tree.crownWidth2 || '';
+                document.getElementById('treeClearanceHeight').value = tree.clearanceHeight || '';
+                document.getElementById('stemTiltDirection').value = tree.stemTiltDirection || '';
+                document.getElementById('stemTiltForm').value = tree.stemTiltForm || '';
+                document.getElementById('stemTiltAngle').value = tree.stemTiltAngle || '';
+                document.getElementById('treeGrade').value = tree.grade || '';
+                document.getElementById('treeNotes').value = tree.notes || '';
                 
-                const isTiltNormal = tree.stemTiltDirection === '정상' && tree.stemTiltForm === '정상' && (tree.stemTiltAngle === 0 || tree.stemTiltAngle === null);
+                document.getElementById('hasStemDefect').checked = tree.hasStemDefect || false;
+                document.getElementById('hasRootDefect').checked = tree.hasRootDefect || false;
+                document.getElementById('hasTarget').checked = tree.hasTarget || false;
+                
+                document.getElementById('stemDefect_crack').checked = tree.stemDefect_crack || false;
+                document.getElementById('stemDefect_dieback').checked = tree.stemDefect_dieback || false;
+                document.getElementById('stemDefect_tear').checked = tree.stemDefect_tear || false;
+                document.getElementById('stemDefect_notes').value = tree.stemDefect_notes || '';
+                
+                document.getElementById('rootDefect_crack').checked = tree.rootDefect_crack || false;
+                document.getElementById('rootDefect_cut').checked = tree.rootDefect_cut || false;
+                document.getElementById('rootDefect_girdle').checked = tree.rootDefect_girdle || false;
+                document.getElementById('rootDefect_notes').value = tree.rootDefect_notes || '';
+
+                document.getElementById('target_present').checked = tree.target_present || false;
+                document.getElementById('target_absent').checked = tree.target_absent || false;
+                document.getElementById('target_notes').value = tree.target_notes || '';
+
+                // '이상없음' 체크박스 상태 동기화
+                const isTiltNormal = tree.stemTiltDirection === '정상' && tree.stemTiltForm === '정상' && (tree.stemTiltAngle === 0 || tree.stemTiltAngle == null);
                 document.getElementById('stemTiltNormalCheck').checked = isTiltNormal;
                 handleStemTiltNormalCheck({target: {checked: isTiltNormal}});
                 

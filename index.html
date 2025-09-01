@@ -150,9 +150,26 @@
         .sub-modal .modal-content h4 { margin-bottom: 20px; }
         
         .form-group { margin-bottom: 12px; }
-        .form-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;}
-        .form-group-header .main-label { font-size: 13px; font-weight: bold; }
-        .form-group-header .checkbox-label { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal; cursor: pointer; }
+        .form-group-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .form-group-header .main-label {
+            flex-grow: 1;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .form-group-header .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: normal;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
         
         .form-group label { font-size: 13px; display: block; text-align: left; font-weight: bold; margin-bottom: 4px;}
         .form-group input, .form-group select, .form-group textarea {
@@ -162,7 +179,7 @@
         .form-row { display: flex; gap: 10px; align-items: flex-start; }
         .form-row .form-group { flex: 1; margin-bottom: 12px; }
         .form-row .form-group .form-row { margin-bottom: 0; }
-        .form-row > span { flex: 0; padding: 0 5px; }
+        .form-row > span { padding: 0 5px; }
 
         .defect-group {
             display: flex; justify-content: space-around; background: #f8f9fa;
@@ -690,7 +707,7 @@
                 document.getElementById('treeClearanceHeight').value = tree.clearanceHeight || '';
                 document.getElementById('stemTiltDirection').value = tree.stemTiltDirection || '';
                 document.getElementById('stemTiltForm').value = tree.stemTiltForm || '';
-                document.getElementById('stemTiltAngle').value = tree.stemTiltAngle ?? ''; // Use ?? for 0
+                document.getElementById('stemTiltAngle').value = tree.stemTiltAngle ?? '';
                 document.getElementById('treeGrade').value = tree.grade || '';
                 document.getElementById('treeNotes').value = tree.notes || '';
                 

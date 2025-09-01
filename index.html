@@ -149,18 +149,19 @@
         }
         .sub-modal .modal-content h4 { margin-bottom: 20px; }
         
-        #treeModal .form-group { margin-bottom: 10px; }
+        .form-group { margin-bottom: 12px; }
         .form-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;}
         .form-group-header label { margin-bottom: 0; }
         .form-group-header .checkbox-label { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal; cursor: pointer; }
         
-        .form-group label { font-size: 13px; display: block; text-align: left; font-weight: bold;}
+        .form-group label { font-size: 13px; display: block; text-align: left; font-weight: bold; margin-bottom: 4px;}
         .form-group input, .form-group select, .form-group textarea {
             width: 100%; padding: 8px; border: 1px solid #ddd;
             border-radius: 3px; font-size: 14px;
         }
-        #treeModal .form-group input, #treeModal .form-group select { padding: 6px; font-size: 13px; }
-        #treeModal .form-row { gap: 8px; }
+        .form-row { display: flex; gap: 10px; align-items: flex-start; }
+        .form-row .form-group { flex: 1; margin-bottom: 12px; }
+        .form-row > span { flex: 0; padding: 0 5px; }
 
         .defect-group {
             display: flex; justify-content: space-around; background: #f8f9fa;
@@ -392,10 +393,18 @@
     <div id="treeModal" class="modal"><div class="modal-content">
         <h4 id="treeModalTitle">수목 정보 입력</h4>
         <form id="treeForm">
-            <div class="form-row"><div class="form-group"><label>번호</label><input type="text" id="treeNumber" required></div><div class="form-group"><label>수종</label><input type="text" id="treeSpecies" required></div></div>
-            <div class="form-row"><div class="form-group"><label>흉고(cm)</label><input type="number" id="treeDiameter" step="0.1"></div><div class="form-group"><label>수고(m)</label><input type="number" id="treeHeight" step="0.1"></div></div>
-            <div class="form-group"><label>수관폭(m)</label><div class="form-row"><input type="number" id="treeCrownWidth1" step="0.1" placeholder="가로"><span>x</span><input type="number" id="treeCrownWidth2" step="0.1" placeholder="세로"></div></div>
-            <div class="form-group"><label>지하고(m)</label><input type="number" id="treeClearanceHeight" step="0.1"></div>
+            <div class="form-row">
+                <div class="form-group"><label>번호</label><input type="text" id="treeNumber" required></div>
+                <div class="form-group"><label>수종</label><input type="text" id="treeSpecies" required></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>흉고(cm)</label><input type="number" id="treeDiameter" step="0.1"></div>
+                <div class="form-group"><label>수고(m)</label><input type="number" id="treeHeight" step="0.1"></div>
+            </div>
+            <div class="form-row">
+                 <div class="form-group"><label>수관폭(m)</label><div class="form-row" style="gap: 5px;"><input type="number" id="treeCrownWidth1" step="0.1" placeholder="가로"><span>x</span><input type="number" id="treeCrownWidth2" step="0.1" placeholder="세로"></div></div>
+                 <div class="form-group"><label>지하고(m)</label><input type="number" id="treeClearanceHeight" step="0.1"></div>
+            </div>
             
             <div class="form-group">
                 <div class="form-group-header">

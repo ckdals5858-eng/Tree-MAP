@@ -149,7 +149,7 @@
         }
         .sub-modal .modal-content h4 { margin-bottom: 20px; }
         
-        .form-group { margin-bottom: 12px; }
+        #treeModal .form-group { margin-bottom: 10px; }
         .form-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;}
         .form-group-header label { margin-bottom: 0; }
         .form-group-header .checkbox-label { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal; cursor: pointer; }
@@ -159,9 +159,8 @@
             width: 100%; padding: 8px; border: 1px solid #ddd;
             border-radius: 3px; font-size: 14px;
         }
-        .form-row { display: flex; gap: 10px; align-items: center; }
-        .form-row > * { flex: 1; }
-        .form-row > span { flex: 0; padding: 0 5px; }
+        #treeModal .form-group input, #treeModal .form-group select { padding: 6px; font-size: 13px; }
+        #treeModal .form-row { gap: 8px; }
 
         .defect-group {
             display: flex; justify-content: space-around; background: #f8f9fa;
@@ -170,10 +169,10 @@
         .defect-group label { font-weight: normal; font-size: 12px; display: flex; align-items: center; gap: 4px; cursor:pointer;}
         .defect-group input { width: auto; }
         
-        .sub-modal .form-group { display: flex; align-items: center; gap: 10px; margin-bottom: 15px;}
+        .sub-modal .form-group { display: flex; align-items: center; gap: 8px; margin-bottom: 15px;}
         .sub-modal .form-group:last-child { margin-bottom: 0; }
         .sub-modal .form-group label { margin-bottom: 0; flex:1; font-weight: normal;}
-        .sub-modal .form-group input[type="checkbox"] { width: auto; transform: scale(1.2); }
+        .sub-modal .form-group input[type="checkbox"] { width: auto; transform: scale(1.2); flex-shrink: 0; }
         .sub-modal textarea { height: 60px; }
 
         .filters {
@@ -422,7 +421,7 @@
                 </div>
             </div>
 
-            <div class="form-group"><label>등급</label><input type="text" id="treeGrade" placeholder="등급을 입력하세요"></div>
+            <div class="form-group"><label>등급</label><input type="text" id="treeGrade"></div>
             <div class="form-group"><label>비고</label><textarea id="treeNotes" rows="2"></textarea></div>
             <div class="form-group"><label>색상 선택</label><div class="color-selector">
                 <div class="color-option active" style="background: #2ed573;" data-color="green"></div>
@@ -441,26 +440,26 @@
 
     <div id="stemDefectModal" class="modal sub-modal"><div class="modal-content">
         <h4>줄기부 결함 상세</h4>
-        <div class="form-group"><label><input type="checkbox" id="stemDefect_crack">균열, 부후, 공동</label></div>
-        <div class="form-group"><label><input type="checkbox" id="stemDefect_dieback">가지고사</label></div>
-        <div class="form-group"><label><input type="checkbox" id="stemDefect_tear">가지찢어짐</label></div>
+        <div class="form-group"><input type="checkbox" id="stemDefect_crack"><label for="stemDefect_crack">균열, 부후, 공동</label></div>
+        <div class="form-group"><input type="checkbox" id="stemDefect_dieback"><label for="stemDefect_dieback">가지고사</label></div>
+        <div class="form-group"><input type="checkbox" id="stemDefect_tear"><label for="stemDefect_tear">가지찢어짐</label></div>
         <div class="form-group" style="flex-direction: column; align-items: flex-start;"><label>비고</label><textarea id="stemDefect_notes"></textarea></div>
         <div style="text-align: right; margin-top: 15px;"><button type="button" class="btn" onclick="closeModalById('stemDefectModal')">확인</button></div>
     </div></div>
 
     <div id="rootDefectModal" class="modal sub-modal"><div class="modal-content">
         <h4>뿌리부 결함 상세</h4>
-        <div class="form-group"><label><input type="checkbox" id="rootDefect_crack">균열, 부후, 공동</label></div>
-        <div class="form-group"><label><input type="checkbox" id="rootDefect_cut">뿌리절단</label></div>
-        <div class="form-group"><label><input type="checkbox" id="rootDefect_girdle">뿌리조임, 병목</label></div>
+        <div class="form-group"><input type="checkbox" id="rootDefect_crack"><label for="rootDefect_crack">균열, 부후, 공동</label></div>
+        <div class="form-group"><input type="checkbox" id="rootDefect_cut"><label for="rootDefect_cut">뿌리절단</label></div>
+        <div class="form-group"><input type="checkbox" id="rootDefect_girdle"><label for="rootDefect_girdle">뿌리조임, 병목</label></div>
         <div class="form-group" style="flex-direction: column; align-items: flex-start;"><label>비고</label><textarea id="rootDefect_notes"></textarea></div>
         <div style="text-align: right; margin-top: 15px;"><button type="button" class="btn" onclick="closeModalById('rootDefectModal')">확인</button></div>
     </div></div>
 
     <div id="targetModal" class="modal sub-modal"><div class="modal-content">
         <h4>피해대상물 상세</h4>
-        <div class="form-group"><label><input type="checkbox" id="target_present">존재</label></div>
-        <div class="form-group"><label><input type="checkbox" id="target_absent">부존재</label></div>
+        <div class="form-group"><input type="checkbox" id="target_present"><label for="target_present">존재</label></div>
+        <div class="form-group"><input type="checkbox" id="target_absent"><label for="target_absent">부존재</label></div>
         <div class="form-group" style="flex-direction: column; align-items: flex-start;"><label>비고</label><textarea id="target_notes"></textarea></div>
         <div style="text-align: right; margin-top: 15px;"><button type="button" class="btn" onclick="closeModalById('targetModal')">확인</button></div>
     </div></div>
@@ -665,7 +664,6 @@
         if (treeId) {
             const tree = trees.find(t => t.id === treeId);
             if (tree) {
-                // 명시적으로 모든 필드 값 채우기 (수정 오류 해결)
                 document.getElementById('treeNumber').value = tree.number || '';
                 document.getElementById('treeSpecies').value = tree.species || '';
                 document.getElementById('treeDiameter').value = tree.diameter || '';
@@ -675,13 +673,13 @@
                 document.getElementById('treeClearanceHeight').value = tree.clearanceHeight || '';
                 document.getElementById('stemTiltDirection').value = tree.stemTiltDirection || '';
                 document.getElementById('stemTiltForm').value = tree.stemTiltForm || '';
-                document.getElementById('stemTiltAngle').value = tree.stemTiltAngle || '';
+                document.getElementById('stemTiltAngle').value = tree.stemTiltAngle ?? ''; // Use ?? for 0
                 document.getElementById('treeGrade').value = tree.grade || '';
                 document.getElementById('treeNotes').value = tree.notes || '';
                 
-                document.getElementById('hasStemDefect').checked = tree.hasStemDefect || false;
-                document.getElementById('hasRootDefect').checked = tree.hasRootDefect || false;
-                document.getElementById('hasTarget').checked = tree.hasTarget || false;
+                document.getElementById('stemDefectCheck').checked = tree.hasStemDefect || false;
+                document.getElementById('rootDefectCheck').checked = tree.hasRootDefect || false;
+                document.getElementById('targetCheck').checked = tree.hasTarget || false;
                 
                 document.getElementById('stemDefect_crack').checked = tree.stemDefect_crack || false;
                 document.getElementById('stemDefect_dieback').checked = tree.stemDefect_dieback || false;
@@ -697,7 +695,6 @@
                 document.getElementById('target_absent').checked = tree.target_absent || false;
                 document.getElementById('target_notes').value = tree.target_notes || '';
 
-                // '이상없음' 체크박스 상태 동기화
                 const isTiltNormal = tree.stemTiltDirection === '정상' && tree.stemTiltForm === '정상' && (tree.stemTiltAngle === 0 || tree.stemTiltAngle == null);
                 document.getElementById('stemTiltNormalCheck').checked = isTiltNormal;
                 handleStemTiltNormalCheck({target: {checked: isTiltNormal}});
@@ -732,7 +729,7 @@
                 '흉고(cm)': tree.diameter || '', '수고(m)': tree.height || '',
                 '수관폭(m)': `${tree.crownWidth1 || ''} x ${tree.crownWidth2 || ''}`,
                 '지하고(m)': tree.clearanceHeight || '',
-                '줄기기울기-방향': tree.stemTiltDirection || '', '줄기기울기-형태': tree.stemTiltForm || '', '줄기기울기-각도': tree.stemTiltAngle || '',
+                '줄기기울기-방향': tree.stemTiltDirection || '', '줄기기울기-형태': tree.stemTiltForm || '', '줄기기울기-각도': tree.stemTiltAngle ?? '',
                 '등급': tree.grade || '', '비고': tree.notes || '',
                 '줄기부결함': boolToOX(tree.hasStemDefect), '줄기-균열/부후/공동': boolToOX(tree.stemDefect_crack), '줄기-가지고사': boolToOX(tree.stemDefect_dieback), '줄기-가지찢어짐': boolToOX(tree.stemDefect_tear), '줄기-비고': tree.stemDefect_notes || '',
                 '뿌리부결함': boolToOX(tree.hasRootDefect), '뿌리-균열/부후/공동': boolToOX(tree.rootDefect_crack), '뿌리-뿌리절단': boolToOX(tree.rootDefect_cut), '뿌리-뿌리조임/병목': boolToOX(tree.rootDefect_girdle), '뿌리-비고': tree.rootDefect_notes || '',

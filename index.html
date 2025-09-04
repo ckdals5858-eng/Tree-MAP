@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=5.0">
     <title>수목 관리 시스템</title>
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c271d3d7aa3cd2e6702892fa92c3b313&libraries=services&autoload=false"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -890,7 +890,25 @@
     async function deleteGroup(groupId) { if (!currentUser) return; const group = groups.find(g => g.id === groupId); if (!group) return; const treeCount = trees.filter(t => t.groupId === groupId).length; if (!confirm(`'${group.name}' 그룹과 포함된 ${treeCount}개의 수목을 모두 삭제하시겠습니까?`)) return; const batch = db.batch(); trees.filter(t => t.groupId === groupId).forEach(t => batch.delete(db.collection('users').doc(currentUser.uid).collection('trees').doc(t.id))); batch.delete(db.collection('users').doc(currentUser.uid).collection('groups').doc(groupId)); try { await batch.commit(); if (currentGroup?.id === groupId) currentGroup = null; await loadUserData(); } catch (error) { console.error("그룹 삭제 오류:", error); alert("그룹 삭제 실패."); } }
     async function deleteTree(treeId) { if (!currentUser) return; const treeToDelete = trees.find(t => t.id === treeId); if (!treeToDelete || !confirm(`'${treeToDelete.number} - ${treeToDelete.species}' 수목 정보를 삭제하시겠습니까?`)) return; try { await db.collection('users').doc(currentUser.uid).collection('trees').doc(treeId).delete(); trees = trees.filter(t => t.id !== treeId); updateTreeList(); updateFolderList(); updateMapMarkers(); } catch (error) { console.error("수목 정보 삭제 오류:", error); alert("수목 정보 삭제 실패."); } }
     function addLongPressListener(element, callback, duration = 500) { let timer; const start = (e) => { if (e.touches?.length > 1) return; timer = setTimeout(() => { timer = null; callback?.(e); }, duration); }; const cancel = () => clearTimeout(timer); element.addEventListener("touchstart", start, { passive: true }); ["touchend", "touchmove"].forEach(evt => element.addEventListener(evt, cancel)); }
-    function initMap() { const container = document.getElementById('map'); map = new kakao.maps.Map(container, { center: new kakao.maps.LatLng(37.5665, 126.9780), level: 3 }); geocoder = new kakao.maps.services.Geocoder(); kakao.maps.event.addListener(map, 'rightclick', (e) => addNewTreeAt(e.latLng)); addLongPressListener(container, (e) => { const touch = e.touches[0]; const rect = container.getBoundingClientRect(); addNewTreeAt(map.getProjection().coordsFromContainerPoint(new kakao.maps.Point(touch.clientX - rect.left, touch.clientY - rect.top))); }); container.addEventListener('contextmenu', e => e.preventDefault()); updateMapMarkers(); }
+    function initMap() {
+        const container = document.getElementById('map');
+        const options = {
+            center: new kakao.maps.LatLng(37.5665, 126.9780),
+            level: 3,
+            draggable: true,
+            scrollwheel: true
+        };
+        map = new kakao.maps.Map(container, options);
+        geocoder = new kakao.maps.services.Geocoder();
+        kakao.maps.event.addListener(map, 'rightclick', (e) => addNewTreeAt(e.latLng));
+        addLongPressListener(container, (e) => {
+            const touch = e.touches[0];
+            const rect = container.getBoundingClientRect();
+            addNewTreeAt(map.getProjection().coordsFromContainerPoint(new kakao.maps.Point(touch.clientX - rect.left, touch.clientY - rect.top)));
+        });
+        container.addEventListener('contextmenu', e => e.preventDefault());
+        updateMapMarkers();
+    }
     function addNewTreeAt(latlng) { if (!currentGroup) { alert('먼저 수목을 추가할 그룹을 선택해주세요.'); return; } currentClickPosition = { lat: latlng.getLat(), lng: latlng.getLng() }; openTreeModal(); }
     function panToTree(treeId) { const tree = trees.find(t => t.id === treeId); if (tree?.lat && tree?.lng) { map.panTo(new kakao.maps.LatLng(tree.lat, tree.lng)); if (window.innerWidth <= 768) { document.getElementById('right-sidebar').classList.remove('visible'); document.getElementById('backdrop').style.display = 'none'; } } }
     function showMyLocation() { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(position => { const locPosition = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude); if (myLocationMarker) myLocationMarker.setMap(null); myLocationMarker = new kakao.maps.Marker({ map, position: locPosition, image: new kakao.maps.MarkerImage(`data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#007bff" fill-opacity="0.3"/><circle cx="12" cy="12" r="6" fill="#007bff" stroke="white" stroke-width="2"/></svg>')}`, new kakao.maps.Size(24, 24)) }); map.setCenter(locPosition); }, () => alert("위치 정보를 가져올 수 없습니다.")); } else { alert("이 브라우저에서는 위치 정보를 지원하지 않습니다."); } }

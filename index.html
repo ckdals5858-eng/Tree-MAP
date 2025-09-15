@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=5.0">
-    <title>수목 관리 시스템</title>
+    <title>Hk-Tree-Service</title>
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c271d3d7aa3cd2e6702892fa92c3b313&libraries=services&autoload=false"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
@@ -327,7 +327,7 @@
 
     <div class="mobile-controls">
         <button id="toggleLeftSidebarBtn" class="mobile-btn">☰ 폴더</button>
-        <div class="mobile-title">TREEMAP</div>
+        <div class="mobile-title">HK-TREEMAP</div>
         <button id="toggleRightSidebarBtn" class="mobile-btn">대상목 ☰</button>
     </div>
     <div class="backdrop" id="backdrop"></div>
@@ -335,7 +335,7 @@
     <div class="container" id="app-container" style="display: none;">
         <div class="sidebar" id="left-sidebar">
             <div class="sidebar-header">
-                <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">TREEMAP</div>
+                <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">HK-TREEMAP</div>
                 <div id="user-status" style="font-size: 12px; color: #bdc3c7; min-height: 38px; line-height: 1.4;"></div>
                 <button id="logoutBtn" class="btn btn-secondary" style="display: none; width: 100%; margin-top: 8px; font-size: 12px; padding: 5px;">로그아웃</button>
             </div>
@@ -881,7 +881,72 @@
     async function loadUserData() { if (!currentUser) return; try { const folderSnapshot = await db.collection('users').doc(currentUser.uid).collection('folders').orderBy('name').get(); folders = folderSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); const groupSnapshot = await db.collection('users').doc(currentUser.uid).collection('groups').get(); groups = groupSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); const treeSnapshot = await db.collection('users').doc(currentUser.uid).collection('trees').get(); trees = treeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); updateFolderList(); updateTreeList(); updateMapMarkers(); } catch (error) { console.error("데이터 로딩 오류:", error); alert("데이터를 불러오는 데 실패했습니다."); } }
     function setupCheckboxFilter(containerId) { const container = document.getElementById(containerId); if (!container) return; container.addEventListener('change', (e) => { if (e.target.type !== 'checkbox') return; const allCheckbox = container.querySelector('input[value="all"]'); const specificCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]:not([value="all"])')); if (e.target.value === 'all' && e.target.checked) { specificCheckboxes.forEach(cb => cb.checked = false); } else if (e.target.value !== 'all' && e.target.checked) { if(allCheckbox) allCheckbox.checked = false; } if (!specificCheckboxes.some(cb => cb.checked) && allCheckbox && !allCheckbox.checked) { allCheckbox.checked = true; } filterAndSortTrees(); }); }
     function getSelectedFilterValues(containerId) { const container = document.getElementById(containerId); if (!container) return []; const allCheckbox = container.querySelector('input[value="all"]'); if (allCheckbox && allCheckbox.checked) return []; return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value); }
-    function updateMapMarkers() { if (!map) return; markers.forEach(marker => marker.setMap(null)); markers = []; const selectedColors = getSelectedFilterValues('colorFilterContainer'); const selectedGrades = getSelectedFilterValues('gradeFilterContainer'); const visibleTrees = trees.filter(tree => { const group = groups.find(g => g.id === tree.groupId); if (!group || !group.visible) return false; const colorMatch = selectedColors.length === 0 || selectedColors.includes(tree.color); const gradeStr = String(tree.grade); const gradeMatch = selectedGrades.length === 0 || selectedGrades.includes(gradeStr); return colorMatch && gradeMatch; }); visibleTrees.forEach(tree => { if (typeof tree.lat !== 'number' || typeof tree.lng !== 'number') return; const position = new kakao.maps.LatLng(tree.lat, tree.lng); const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="26" viewBox="0 0 20 26" overflow="visible"><path d="M10 0C4.477 0 0 4.477 0 10c0 7.5 10 16 10 16s10-8.5 10-16C20 4.477 15.523 0 10 0z" fill="${colorMap[tree.color] || colorMap.gray}"/><circle cx="10" cy="10" r="6" fill="white"/><text x="10" y="14" text-anchor="middle" font-size="8" font-weight="bold" stroke="white" stroke-width="2" stroke-linejoin="round">${tree.number}</text><text x="10" y="14" text-anchor="middle" font-size="8" font-weight="bold" fill="black">${tree.number}</text></svg>`; const imageSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`; const markerImage = new kakao.maps.MarkerImage(imageSrc, new kakao.maps.Size(20, 26), {offset: new kakao.maps.Point(10, 26)}); const marker = new kakao.maps.Marker({ position, image: markerImage }); marker.setMap(map); markers.push(marker); kakao.maps.event.addListener(marker, 'click', () => editTree(tree.id)); kakao.maps.event.addListener(marker, 'rightclick', () => deleteTree(tree.id)); }); }
+    
+    // ==================================================================
+    // 여기가 수정된 함수입니다.
+    // ==================================================================
+    function updateMapMarkers() {
+        if (!map) return;
+        markers.forEach(marker => marker.setMap(null));
+        markers = [];
+        const selectedColors = getSelectedFilterValues('colorFilterContainer');
+        const selectedGrades = getSelectedFilterValues('gradeFilterContainer');
+        const visibleTrees = trees.filter(tree => {
+            const group = groups.find(g => g.id === tree.groupId);
+            if (!group || !group.visible) return false;
+            const colorMatch = selectedColors.length === 0 || selectedColors.includes(tree.color);
+            const gradeStr = String(tree.grade);
+            const gradeMatch = selectedGrades.length === 0 || selectedGrades.includes(gradeStr);
+            return colorMatch && gradeMatch;
+        });
+
+        visibleTrees.forEach(tree => {
+            if (typeof tree.lat !== 'number' || typeof tree.lng !== 'number') return;
+            const position = new kakao.maps.LatLng(tree.lat, tree.lng);
+            const text = tree.number || '';
+
+            // 1. 텍스트 길이를 기반으로 너비 동적 계산
+            let textWidth = 0;
+            // 글자별 너비를 대략적으로 계산 (한글/기타 문자 구분)
+            for (let i = 0; i < text.length; i++) {
+                const char = text.charCodeAt(i);
+                if (char >= 0xAC00 && char <= 0xD7A3) { // 한글 범위
+                    textWidth += 11; // 한글은 11px로 계산
+                } else {
+                    textWidth += 6; // 그 외 (숫자, 영문 등)는 6px로 계산
+                }
+            }
+
+            const padding = 14; // 텍스트 좌우 여백
+            const svgWidth = Math.max(22, textWidth + padding); // 최소 너비 22px 보장
+
+            // 2. 계산된 너비를 적용한 새로운 SVG 마커 코드
+            const svgString = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="28">
+                <rect x="1" y="1" width="${svgWidth - 2}" height="20" rx="10" ry="10" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+                <path d="M ${svgWidth/2 - 6} 20 L ${svgWidth/2} 27 L ${svgWidth/2 + 6} 20 Z" fill="${colorMap[tree.color] || colorMap.gray}"/>
+                <text x="${svgWidth/2}" y="15" font-size="11" font-weight="bold" text-anchor="middle" fill="white">${text}</text>
+              </svg>`;
+
+            const imageSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
+            
+            // 3. 동적 사이즈와 오프셋을 적용하여 MarkerImage 생성
+            const imageSize = new kakao.maps.Size(svgWidth, 28);
+            const imageOption = { offset: new kakao.maps.Point(svgWidth / 2, 28) };
+            const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+            
+            const marker = new kakao.maps.Marker({
+                position,
+                image: markerImage
+            });
+
+            marker.setMap(map);
+            markers.push(marker);
+            kakao.maps.event.addListener(marker, 'click', () => editTree(tree.id));
+            kakao.maps.event.addListener(marker, 'rightclick', () => deleteTree(tree.id));
+        });
+    }
+
     function updateFolderList() { const folderListDiv = document.getElementById('folderList'); folderListDiv.innerHTML = ''; if (folders.length === 0) { folderListDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">폴더가 없습니다.</div>'; return; } folders.forEach(folder => { const details = document.createElement('details'); details.open = true; details.innerHTML = `<summary><span class="folder-name">${folder.name}</span><div class="folder-actions"><button class="action-btn edit-btn">수정</button><button class="action-btn delete-btn">삭제</button></div></summary>`; details.querySelector('.edit-btn').addEventListener('click', (e) => {e.stopPropagation(); openFolderModal(folder.id);}); details.querySelector('.delete-btn').addEventListener('click', (e) => {e.stopPropagation(); deleteFolder(folder.id);}); const groupContainer = document.createElement('div'); groupContainer.className = 'group-container'; const groupsInFolder = groups.filter(g => g.folderId === folder.id).sort((a,b) => a.name.localeCompare(b.name, 'ko')); if (groupsInFolder.length > 0) { groupsInFolder.forEach(group => { const div = document.createElement('div'); div.className = `group-item ${currentGroup?.id === group.id ? 'active' : ''}`; const treeCount = trees.filter(t => t.groupId === group.id).length; div.innerHTML = `<div class="group-content"><input type="checkbox" class="group-checkbox" ${group.visible !== false ? 'checked' : ''}><div class="group-name">${group.name} (${treeCount}개)</div></div>`; div.querySelector('.group-name').addEventListener('click', () => selectGroup(group.id)); div.querySelector('.group-checkbox').addEventListener('change', (e) => toggleGroupVisibility(group.id, e.target.checked)); div.addEventListener('contextmenu', (e) => { e.preventDefault(); openGroupModal(group.id); }); addLongPressListener(div, () => openGroupModal(group.id)); groupContainer.appendChild(div); }); } else { groupContainer.innerHTML = '<div style="font-size: 11px; color: #888; padding: 5px 0;">그룹이 없습니다.</div>'; } details.appendChild(groupContainer); folderListDiv.appendChild(details); }); }
     function updateTreeList() { const treeList = document.getElementById('treeList'); const treePagination = document.getElementById('treePagination'); const rightSidebarTitle = document.getElementById('rightSidebarTitle'); const treeListInfo = document.getElementById('treeListInfo'); treeList.innerHTML = ''; treePagination.innerHTML = ''; if (!currentGroup) { treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">그룹을 선택하세요.</div>'; rightSidebarTitle.textContent = '대상목 리스트'; treeListInfo.textContent = ''; return; } const folder = folders.find(f => f.id === currentGroup.folderId); rightSidebarTitle.innerHTML = `대상목 리스트 <small style="display: block; font-size: 13px; color: #555; font-weight: normal; margin-top: 4px;">(${folder?.name || '미지정'} / ${currentGroup.name})</small>`; let displayTrees = trees.filter(tree => tree.groupId === currentGroup.id); const selectedColors = getSelectedFilterValues('colorFilterContainer'); if (selectedColors.length > 0) displayTrees = displayTrees.filter(tree => selectedColors.includes(tree.color)); const selectedGrades = getSelectedFilterValues('gradeFilterContainer'); if (selectedGrades.length > 0) displayTrees = displayTrees.filter(tree => selectedGrades.includes(String(tree.grade))); treeListInfo.textContent = `총 ${displayTrees.length}개의 대상목`; const sortFilter = document.getElementById('sortFilter').value; displayTrees.sort((a, b) => sortFilter === 'number_desc' ? String(b.number).localeCompare(String(a.number), undefined, {numeric: true}) : String(a.number).localeCompare(String(b.number), undefined, {numeric: true})); if (displayTrees.length === 0) { treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">표시할 수목이 없습니다.</div>'; return; } const totalPages = Math.ceil(displayTrees.length / treesPerPage); const paginatedTrees = displayTrees.slice((currentTreePage - 1) * treesPerPage, currentTreePage * treesPerPage); if (totalPages > 1) { let paginationHTML = `<span class="page-info">${currentTreePage} / ${totalPages}</span>`; if (currentTreePage > 1) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage - 1})">이전</button>`; const startPage = Math.max(1, currentTreePage - 2), endPage = Math.min(totalPages, currentTreePage + 2); for (let i = startPage; i <= endPage; i++) paginationHTML += `<button class="page-btn ${i === currentTreePage ? 'active' : ''}" onclick="changeTreePage(${i})">${i}</button>`; if (currentTreePage < totalPages) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage + 1})">다음</button>`; treePagination.innerHTML = paginationHTML; } paginatedTrees.forEach(tree => { const div = document.createElement('div'); div.className = 'group-item'; let details = []; if (tree.diameter) details.push(`흉고:${tree.diameter}${String(tree.diameter).match(/[^0-9\.]/) ? '' : 'cm'}`); if (tree.height) details.push(`수고:${tree.height}${String(tree.height).match(/[^0-9\.]/) ? '' : 'm'}`); if (tree.crownWidth1 && tree.crownWidth2) details.push(`수관폭:${tree.crownWidth1}x${tree.crownWidth2}m`); if (tree.grade) details.push(`등급:${tree.grade}`); div.innerHTML = `<div class="group-content"><div style="width:12px;height:12px;border-radius:50%;background:${colorMap[tree.color]||colorMap.gray};flex-shrink:0;margin-top:3px;"></div><div style="flex:1;min-width:0;"><div><strong>${tree.number}</strong> - ${tree.species}</div><div class="small-text">${details.join(' / ')}</div></div></div>`; div.addEventListener('click', () => panToTree(tree.id)); div.addEventListener('contextmenu', e => { e.preventDefault(); openTreeModal(tree.id); }); addLongPressListener(div, () => openTreeModal(tree.id)); treeList.appendChild(div); }); }
     async function handleFolderFormSubmit(e) { e.preventDefault(); const folderName = document.getElementById('folderName').value.trim(); if (!folderName || !currentUser) return; try { if (currentFolderId) { await db.collection('users').doc(currentUser.uid).collection('folders').doc(currentFolderId).update({ name: folderName }); } else { await db.collection('users').doc(currentUser.uid).collection('folders').add({ name: folderName }); } await loadUserData(); closeModalById('folderModal'); } catch (error) { console.error("폴더 저장 오류:", error); alert("폴더 저장 실패."); } }
@@ -944,9 +1009,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-

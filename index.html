@@ -980,17 +980,22 @@
             let textWidth = 0;
             for (let i = 0; i < text.length; i++) {
                 const char = text.charCodeAt(i);
-                textWidth += (char >= 0xAC00 && char <= 0xD7A3) ? 7.5 : 4;
+                // [크기 수정] 1.2배 확대 (한글: 7.5 -> 9, 기타: 4 -> 4.8)
+                textWidth += (char >= 0xAC00 && char <= 0xD7A3) ? 9 : 4.8;
             }
-            const padding = 10;
-            const svgWidth = Math.max(15, textWidth + padding);
-            const svgHeight = 19, rectHeight = 13, rectRadius = 7, pointerWidth = 4, fontSize = 8, textY = 11;
+            // [크기 수정] 1.2배 확대 (10 -> 12)
+            const padding = 12;
+            // [크기 수정] 1.2배 확대 (15 -> 18)
+            const svgWidth = Math.max(18, textWidth + padding);
+
+            // [크기 수정] SVG 태그와 내부 요소들의 크기 및 위치 값 변경 (약 1.2배)
+            const svgHeight = 23, rectHeight = 16, rectRadius = 8, pointerWidth = 5, fontSize = 10, textY = 13;
             
             const svgString = `
               <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">
-                <rect x="1" y="1" width="${svgWidth - 2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
-                <path d="M ${svgWidth/2 - pointerWidth} ${rectHeight} L ${svgWidth/2} ${svgHeight} L ${svgWidth/2 + pointerWidth} ${rectHeight} Z" fill="${colorMap[tree.color] || colorMap.gray}"/>
-                <text x="${svgWidth/2}" y="${textY}" font-size="${fontSize}" font-weight="bold" text-anchor="middle" fill="white">${text}</text>
+                  <rect x="1" y="1" width="${svgWidth - 2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+                  <path d="M ${svgWidth/2 - pointerWidth} ${rectHeight} L ${svgWidth/2} ${svgHeight} L ${svgWidth/2 + pointerWidth} ${rectHeight} Z" fill="${colorMap[tree.color] || colorMap.gray}"/>
+                  <text x="${svgWidth/2}" y="${textY}" font-size="${fontSize}" font-weight="bold" text-anchor="middle" fill="white">${text}</text>
               </svg>`;
 
             const imageSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;

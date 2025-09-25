@@ -555,6 +555,13 @@
         <div style="text-align: right; margin-top: 15px;"><button type="button" class="btn" onclick="closeModalById('targetModal')">확인</button></div>
     </div></div>
 
+    <div id="custom-alert-modal" class="modal">
+        <div class="modal-content" style="max-width: 320px; text-align: center;">
+            <p id="custom-alert-message" style="margin-bottom: 20px; line-height: 1.6;"></p>
+            <button id="custom-alert-ok-btn" class="btn" style="width: 100%;">확인</button>
+        </div>
+    </div>
+
     <script>
     const firebaseConfig = {
         apiKey: "AIzaSyBw6TBu2uPgSBW2_E_PUIs-uI_MZVs2hlA",
@@ -616,7 +623,7 @@
         document.getElementById('loginBtn').addEventListener('click', () => {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
-            if (!email || !password) return alert('이메일과 비밀번호를 입력해주세요.');
+            if (!email || !password) return showCustomAlert('이메일과 비밀번호를 입력해주세요.');
             
             auth.signInWithEmailAndPassword(email, password).catch(error => {
                 console.error("로그인 오류 상세:", error);
@@ -626,13 +633,13 @@
                 } else if (error.code === 'auth/invalid-email') {
                     errorMessage = "올바른 이메일 형식이 아닙니다.";
                 }
-                alert(errorMessage);
+                showCustomAlert(errorMessage);
             });
         });
 
         document.getElementById('openSignupModalBtn').addEventListener('click', () => { document.getElementById('signup-modal').style.display = 'flex'; });
         document.getElementById('cancelSignupBtn').addEventListener('click', () => { document.getElementById('signup-modal').style.display = 'none'; });
-        document.getElementById('signupForm').addEventListener('submit', (e) => { e.preventDefault(); const email = document.getElementById('signupEmail').value; const password = document.getElementById('signupPassword').value; const passwordConfirm = document.getElementById('signupPasswordConfirm').value; if (password.length < 6) return alert('비밀번호는 6자리 이상이어야 합니다.'); if (password !== passwordConfirm) return alert('비밀번호가 일치하지 않습니다.'); auth.createUserWithEmailAndPassword(email, password).then(() => alert('회원가입 성공! 자동으로 로그인됩니다.')).catch(error => alert(`회원가입 실패: ${error.message}`)); });
+        document.getElementById('signupForm').addEventListener('submit', (e) => { e.preventDefault(); const email = document.getElementById('signupEmail').value; const password = document.getElementById('signupPassword').value; const passwordConfirm = document.getElementById('signupPasswordConfirm').value; if (password.length < 6) return showCustomAlert('비밀번호는 6자리 이상이어야 합니다.'); if (password !== passwordConfirm) return showCustomAlert('비밀번호가 일치하지 않습니다.'); auth.createUserWithEmailAndPassword(email, password).then(() => showCustomAlert('회원가입 성공! 자동으로 로그인됩니다.')).catch(error => showCustomAlert(`회원가입 실패: ${error.message}`)); });
         document.getElementById('logoutBtn').addEventListener('click', () => { if (confirm('로그아웃 하시겠습니까?')) auth.signOut(); });
 
         document.getElementById('toggle-left-sidebar-desktop').addEventListener('click', toggleLeftSidebarDesktop);
@@ -667,7 +674,7 @@
         document.getElementById('myLocationBtn').addEventListener('click', showMyLocation);
 
         document.getElementById('createFolderBtn').addEventListener('click', () => openFolderModal());
-        document.getElementById('createGroupBtn').addEventListener('click', () => { if(folders.length === 0) alert('먼저 폴더를 생성해주세요.'); else openGroupModal(); });
+        document.getElementById('createGroupBtn').addEventListener('click', () => { if(folders.length === 0) showCustomAlert('먼저 폴더를 생성해주세요.'); else openGroupModal(); });
         document.getElementById('exportDataBtn').addEventListener('click', exportData);
         document.getElementById('importDataBtn').addEventListener('click', () => document.getElementById('excelImport').click());
         document.getElementById('excelImport').addEventListener('change', importData);
@@ -693,6 +700,14 @@
 
         window.addEventListener('click', (event) => { if (event.target.classList.contains('modal')) event.target.style.display = 'none'; });
         window.addEventListener('resize', () => map && map.relayout());
+
+        // Custom Alert Listeners
+        document.getElementById('custom-alert-ok-btn').addEventListener('click', hideCustomAlert);
+        document.getElementById('custom-alert-modal').addEventListener('click', (event) => {
+            if (event.target.id === 'custom-alert-modal') {
+                hideCustomAlert();
+            }
+        });
     }
 
     function toggleControls() {
@@ -732,7 +747,7 @@
     
     async function handleTreeFormSubmit(e) {
         e.preventDefault();
-        if (!currentGroup && !currentTreeId) return alert('그룹을 먼저 선택해주세요.');
+        if (!currentGroup && !currentTreeId) return showCustomAlert('그룹을 먼저 선택해주세요.');
         if (!currentUser) return;
 
         const treeData = {
@@ -783,7 +798,7 @@
             closeModalById('treeModal');
         } catch (error) {
             console.error("Firestore 저장 실패 원인:", error);
-            alert(`저장에 실패했습니다. 개발자 도구(F12)의 콘솔(Console) 탭에서 자세한 오류를 확인하세요.\n\n오류: ${error.message}`);
+            showCustomAlert(`저장에 실패했습니다. 개발자 도구(F12)의 콘솔(Console) 탭에서 자세한 오류를 확인하세요.\n\n오류: ${error.message}`);
         }
     }
     
@@ -868,7 +883,7 @@
     }
     
     function exportData() {
-        if (trees.length === 0) return alert('내보낼 데이터가 없습니다.');
+        if (trees.length === 0) return showCustomAlert('내보낼 데이터가 없습니다.');
         const boolToOX = (val) => val ? 'O' : 'X';
         const dataToExport = [];
         trees.forEach(tree => {
@@ -904,7 +919,7 @@
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
                 const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                if (json.length === 0) return alert("엑셀 파일에 데이터가 없습니다.");
+                if (json.length === 0) return showCustomAlert("엑셀 파일에 데이터가 없습니다.");
                 if (!confirm("기존 데이터를 유지하고 새로운 데이터를 추가하시겠습니까?")) return;
 
                 for (const row of json) {
@@ -943,10 +958,10 @@
                         successCount++;
                     } else { errorCount++; }
                 }
-                alert(`${successCount}개 데이터 가져오기 성공, ${errorCount}개 실패 (위도/경도 오류)`);
+                showCustomAlert(`${successCount}개 데이터 가져오기 성공, ${errorCount}개 실패 (위도/경도 오류)`);
             } catch (error) {
                 console.error("엑셀 파일 처리 중 오류:", error);
-                alert("엑셀 파일을 처리하는 중 오류가 발생했습니다.");
+                showCustomAlert("엑셀 파일을 처리하는 중 오류가 발생했습니다.");
             } finally {
                 event.target.value = ''; loadUserData();
             }
@@ -954,7 +969,7 @@
         reader.readAsArrayBuffer(file);
     }
     
-    async function loadUserData() { if (!currentUser) return; try { const folderSnapshot = await db.collection('users').doc(currentUser.uid).collection('folders').orderBy('name').get(); folders = folderSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); const groupSnapshot = await db.collection('users').doc(currentUser.uid).collection('groups').get(); groups = groupSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); const treeSnapshot = await db.collection('users').doc(currentUser.uid).collection('trees').get(); trees = treeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); updateFolderList(); updateTreeList(); updateMapMarkers(); } catch (error) { console.error("데이터 로딩 오류:", error); alert("데이터를 불러오는 데 실패했습니다."); } }
+    async function loadUserData() { if (!currentUser) return; try { const folderSnapshot = await db.collection('users').doc(currentUser.uid).collection('folders').orderBy('name').get(); folders = folderSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); const groupSnapshot = await db.collection('users').doc(currentUser.uid).collection('groups').get(); groups = groupSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); const treeSnapshot = await db.collection('users').doc(currentUser.uid).collection('trees').get(); trees = treeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); updateFolderList(); updateTreeList(); updateMapMarkers(); } catch (error) { console.error("데이터 로딩 오류:", error); showCustomAlert("데이터를 불러오는 데 실패했습니다."); } }
     function setupCheckboxFilter(containerId) { const container = document.getElementById(containerId); if (!container) return; container.addEventListener('change', (e) => { if (e.target.type !== 'checkbox') return; const allCheckbox = container.querySelector('input[value="all"]'); const specificCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]:not([value="all"])')); if (e.target.value === 'all' && e.target.checked) { specificCheckboxes.forEach(cb => cb.checked = false); } else if (e.target.value !== 'all' && e.target.checked) { if(allCheckbox) allCheckbox.checked = false; } if (!specificCheckboxes.some(cb => cb.checked) && allCheckbox && !allCheckbox.checked) { allCheckbox.checked = true; } filterAndSortTrees(); }); }
     function getSelectedFilterValues(containerId) { const container = document.getElementById(containerId); if (!container) return []; const allCheckbox = container.querySelector('input[value="all"]'); if (allCheckbox && allCheckbox.checked) return []; return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value); }
     
@@ -980,15 +995,10 @@
             let textWidth = 0;
             for (let i = 0; i < text.length; i++) {
                 const char = text.charCodeAt(i);
-                // [크기 수정] 1.2배 확대 (한글: 7.5 -> 9, 기타: 4 -> 4.8)
                 textWidth += (char >= 0xAC00 && char <= 0xD7A3) ? 9 : 4.8;
             }
-            // [크기 수정] 1.2배 확대 (10 -> 12)
             const padding = 12;
-            // [크기 수정] 1.2배 확대 (15 -> 18)
             const svgWidth = Math.max(18, textWidth + padding);
-
-            // [크기 수정] SVG 태그와 내부 요소들의 크기 및 위치 값 변경 (약 1.2배)
             const svgHeight = 23, rectHeight = 16, rectRadius = 8, pointerWidth = 5, fontSize = 10, textY = 13;
             
             const svgString = `
@@ -1017,11 +1027,11 @@
 
     function updateFolderList() { const folderListDiv = document.getElementById('folderList'); folderListDiv.innerHTML = ''; if (folders.length === 0) { folderListDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">폴더가 없습니다.</div>'; return; } folders.forEach(folder => { const details = document.createElement('details'); details.open = true; details.innerHTML = `<summary><span class="folder-name">${folder.name}</span><div class="folder-actions"><button class="action-btn edit-btn">수정</button><button class="action-btn delete-btn">삭제</button></div></summary>`; details.querySelector('.edit-btn').addEventListener('click', (e) => {e.stopPropagation(); openFolderModal(folder.id);}); details.querySelector('.delete-btn').addEventListener('click', (e) => {e.stopPropagation(); deleteFolder(folder.id);}); const groupContainer = document.createElement('div'); groupContainer.className = 'group-container'; const groupsInFolder = groups.filter(g => g.folderId === folder.id).sort((a,b) => a.name.localeCompare(b.name, 'ko')); if (groupsInFolder.length > 0) { groupsInFolder.forEach(group => { const div = document.createElement('div'); div.className = `group-item ${currentGroup?.id === group.id ? 'active' : ''}`; const treeCount = trees.filter(t => t.groupId === group.id).length; div.innerHTML = `<div class="group-content"><input type="checkbox" class="group-checkbox" ${group.visible !== false ? 'checked' : ''}><div class="group-name">${group.name} (${treeCount}개)</div></div>`; div.querySelector('.group-name').addEventListener('click', () => selectGroup(group.id)); div.querySelector('.group-checkbox').addEventListener('change', (e) => toggleGroupVisibility(group.id, e.target.checked)); div.addEventListener('contextmenu', (e) => { e.preventDefault(); openGroupModal(group.id); }); addLongPressListener(div, () => openGroupModal(group.id)); groupContainer.appendChild(div); }); } else { groupContainer.innerHTML = '<div style="font-size: 11px; color: #888; padding: 5px 0;">그룹이 없습니다.</div>'; } details.appendChild(groupContainer); folderListDiv.appendChild(details); }); }
     function updateTreeList() { const treeList = document.getElementById('treeList'); const treePagination = document.getElementById('treePagination'); const rightSidebarTitle = document.getElementById('rightSidebarTitle'); const treeListInfo = document.getElementById('treeListInfo'); treeList.innerHTML = ''; treePagination.innerHTML = ''; if (!currentGroup) { treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">그룹을 선택하세요.</div>'; rightSidebarTitle.textContent = '대상목 리스트'; treeListInfo.textContent = ''; return; } const folder = folders.find(f => f.id === currentGroup.folderId); rightSidebarTitle.innerHTML = `대상목 리스트 <small style="display: block; font-size: 13px; color: #555; font-weight: normal; margin-top: 4px;">(${folder?.name || '미지정'} / ${currentGroup.name})</small>`; let displayTrees = trees.filter(tree => tree.groupId === currentGroup.id); const selectedColors = getSelectedFilterValues('colorFilterContainer'); if (selectedColors.length > 0) displayTrees = displayTrees.filter(tree => selectedColors.includes(tree.color)); const selectedGrades = getSelectedFilterValues('gradeFilterContainer'); if (selectedGrades.length > 0) displayTrees = displayTrees.filter(tree => selectedGrades.includes(String(tree.grade))); treeListInfo.textContent = `총 ${displayTrees.length}개의 대상목`; const sortFilter = document.getElementById('sortFilter').value; displayTrees.sort((a, b) => sortFilter === 'number_desc' ? String(b.number).localeCompare(String(a.number), undefined, {numeric: true}) : String(a.number).localeCompare(String(b.number), undefined, {numeric: true})); if (displayTrees.length === 0) { treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">표시할 수목이 없습니다.</div>'; return; } const totalPages = Math.ceil(displayTrees.length / treesPerPage); const paginatedTrees = displayTrees.slice((currentTreePage - 1) * treesPerPage, currentTreePage * treesPerPage); if (totalPages > 1) { let paginationHTML = `<span class="page-info">${currentTreePage} / ${totalPages}</span>`; if (currentTreePage > 1) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage - 1})">이전</button>`; const startPage = Math.max(1, currentTreePage - 2), endPage = Math.min(totalPages, currentTreePage + 2); for (let i = startPage; i <= endPage; i++) paginationHTML += `<button class="page-btn ${i === currentTreePage ? 'active' : ''}" onclick="changeTreePage(${i})">${i}</button>`; if (currentTreePage < totalPages) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage + 1})">다음</button>`; treePagination.innerHTML = paginationHTML; } paginatedTrees.forEach(tree => { const div = document.createElement('div'); div.className = 'group-item'; let details = []; if (tree.diameter) details.push(`흉고:${tree.diameter}${String(tree.diameter).match(/[^0-9\.]/) ? '' : 'cm'}`); if (tree.height) details.push(`수고:${tree.height}${String(tree.height).match(/[^0-9\.]/) ? '' : 'm'}`); if (tree.crownWidth1 && tree.crownWidth2) details.push(`수관폭:${tree.crownWidth1}x${tree.crownWidth2}m`); if (tree.grade) details.push(`등급:${tree.grade}`); div.innerHTML = `<div class="group-content"><div style="width:12px;height:12px;border-radius:50%;background:${colorMap[tree.color]||colorMap.gray};flex-shrink:0;margin-top:3px;"></div><div style="flex:1;min-width:0;"><div><strong>${tree.number}</strong> - ${tree.species}</div><div class="small-text">${details.join(' / ')}</div></div></div>`; div.addEventListener('click', () => panToTree(tree.id)); div.addEventListener('contextmenu', e => { e.preventDefault(); openTreeModal(tree.id); }); addLongPressListener(div, () => openTreeModal(tree.id)); treeList.appendChild(div); }); }
-    async function handleFolderFormSubmit(e) { e.preventDefault(); const folderName = document.getElementById('folderName').value.trim(); if (!folderName || !currentUser) return; try { if (currentFolderId) { await db.collection('users').doc(currentUser.uid).collection('folders').doc(currentFolderId).update({ name: folderName }); } else { await db.collection('users').doc(currentUser.uid).collection('folders').add({ name: folderName }); } await loadUserData(); closeModalById('folderModal'); } catch (error) { console.error("폴더 저장 오류:", error); alert("폴더 저장 실패."); } }
-    async function deleteFolder(folderId) { if (!currentUser) return; const folder = folders.find(f => f.id === folderId); if (!folder || !confirm(`'${folder.name}' 폴더와 모든 하위 데이터를 삭제하시겠습니까?`)) return; const batch = db.batch(); const groupsToDelete = groups.filter(g => g.folderId === folderId); for (const group of groupsToDelete) { trees.filter(t => t.groupId === group.id).forEach(t => batch.delete(db.collection('users').doc(currentUser.uid).collection('trees').doc(t.id))); batch.delete(db.collection('users').doc(currentUser.uid).collection('groups').doc(group.id)); } batch.delete(db.collection('users').doc(currentUser.uid).collection('folders').doc(folderId)); try { await batch.commit(); await loadUserData(); } catch (error) { console.error("폴더 삭제 오류:", error); alert("폴더 삭제 실패."); } }
-    async function handleGroupFormSubmit(e) { e.preventDefault(); const groupName = document.getElementById('groupName').value.trim(); const folderId = document.getElementById('groupFolderSelect').value; if (!groupName || !folderId || !currentUser) return; const groupData = { name: groupName, folderId, visible: true }; try { if (currentGroupId) { await db.collection('users').doc(currentUser.uid).collection('groups').doc(currentGroupId).update({ name: groupName, folderId }); } else { await db.collection('users').doc(currentUser.uid).collection('groups').add(groupData); } await loadUserData(); closeModalById('groupModal'); } catch (error) { console.error("그룹 저장 오류:", error); alert("그룹 저장 실패."); } }
-    async function deleteGroup(groupId) { if (!currentUser) return; const group = groups.find(g => g.id === groupId); if (!group) return; const treeCount = trees.filter(t => t.groupId === groupId).length; if (!confirm(`'${group.name}' 그룹과 포함된 ${treeCount}개의 수목을 모두 삭제하시겠습니까?`)) return; const batch = db.batch(); trees.filter(t => t.groupId === groupId).forEach(t => batch.delete(db.collection('users').doc(currentUser.uid).collection('trees').doc(t.id))); batch.delete(db.collection('users').doc(currentUser.uid).collection('groups').doc(groupId)); try { await batch.commit(); if (currentGroup?.id === groupId) currentGroup = null; await loadUserData(); } catch (error) { console.error("그룹 삭제 오류:", error); alert("그룹 삭제 실패."); } }
-    async function deleteTree(treeId) { if (!currentUser) return; const treeToDelete = trees.find(t => t.id === treeId); if (!treeToDelete || !confirm(`'${treeToDelete.number} - ${treeToDelete.species}' 수목 정보를 삭제하시겠습니까?`)) return; try { await db.collection('users').doc(currentUser.uid).collection('trees').doc(treeId).delete(); trees = trees.filter(t => t.id !== treeId); updateTreeList(); updateFolderList(); updateMapMarkers(); } catch (error) { console.error("수목 정보 삭제 오류:", error); alert("수목 정보 삭제 실패."); } }
+    async function handleFolderFormSubmit(e) { e.preventDefault(); const folderName = document.getElementById('folderName').value.trim(); if (!folderName || !currentUser) return; try { if (currentFolderId) { await db.collection('users').doc(currentUser.uid).collection('folders').doc(currentFolderId).update({ name: folderName }); } else { await db.collection('users').doc(currentUser.uid).collection('folders').add({ name: folderName }); } await loadUserData(); closeModalById('folderModal'); } catch (error) { console.error("폴더 저장 오류:", error); showCustomAlert("폴더 저장 실패."); } }
+    async function deleteFolder(folderId) { if (!currentUser) return; const folder = folders.find(f => f.id === folderId); if (!folder || !confirm(`'${folder.name}' 폴더와 모든 하위 데이터를 삭제하시겠습니까?`)) return; const batch = db.batch(); const groupsToDelete = groups.filter(g => g.folderId === folderId); for (const group of groupsToDelete) { trees.filter(t => t.groupId === group.id).forEach(t => batch.delete(db.collection('users').doc(currentUser.uid).collection('trees').doc(t.id))); batch.delete(db.collection('users').doc(currentUser.uid).collection('groups').doc(group.id)); } batch.delete(db.collection('users').doc(currentUser.uid).collection('folders').doc(folderId)); try { await batch.commit(); await loadUserData(); } catch (error) { console.error("폴더 삭제 오류:", error); showCustomAlert("폴더 삭제 실패."); } }
+    async function handleGroupFormSubmit(e) { e.preventDefault(); const groupName = document.getElementById('groupName').value.trim(); const folderId = document.getElementById('groupFolderSelect').value; if (!groupName || !folderId || !currentUser) return; const groupData = { name: groupName, folderId, visible: true }; try { if (currentGroupId) { await db.collection('users').doc(currentUser.uid).collection('groups').doc(currentGroupId).update({ name: groupName, folderId }); } else { await db.collection('users').doc(currentUser.uid).collection('groups').add(groupData); } await loadUserData(); closeModalById('groupModal'); } catch (error) { console.error("그룹 저장 오류:", error); showCustomAlert("그룹 저장 실패."); } }
+    async function deleteGroup(groupId) { if (!currentUser) return; const group = groups.find(g => g.id === groupId); if (!group) return; const treeCount = trees.filter(t => t.groupId === groupId).length; if (!confirm(`'${group.name}' 그룹과 포함된 ${treeCount}개의 수목을 모두 삭제하시겠습니까?`)) return; const batch = db.batch(); trees.filter(t => t.groupId === groupId).forEach(t => batch.delete(db.collection('users').doc(currentUser.uid).collection('trees').doc(t.id))); batch.delete(db.collection('users').doc(currentUser.uid).collection('groups').doc(groupId)); try { await batch.commit(); if (currentGroup?.id === groupId) currentGroup = null; await loadUserData(); } catch (error) { console.error("그룹 삭제 오류:", error); showCustomAlert("그룹 삭제 실패."); } }
+    async function deleteTree(treeId) { if (!currentUser) return; const treeToDelete = trees.find(t => t.id === treeId); if (!treeToDelete || !confirm(`'${treeToDelete.number} - ${treeToDelete.species}' 수목 정보를 삭제하시겠습니까?`)) return; try { await db.collection('users').doc(currentUser.uid).collection('trees').doc(treeId).delete(); trees = trees.filter(t => t.id !== treeId); updateTreeList(); updateFolderList(); updateMapMarkers(); } catch (error) { console.error("수목 정보 삭제 오류:", error); showCustomAlert("수목 정보 삭제 실패."); } }
     function addLongPressListener(element, callback, duration = 500) { let timer; const start = (e) => { if (e.touches?.length > 1) return; timer = setTimeout(() => { timer = null; callback?.(e); }, duration); }; const cancel = () => clearTimeout(timer); element.addEventListener("touchstart", start, { passive: true }); ["touchend", "touchmove"].forEach(evt => element.addEventListener(evt, cancel)); }
     
     function initMap() {
@@ -1052,12 +1062,12 @@
         updateMapMarkers();
     }
     
-    function addNewTreeAt(latlng) { if (!currentGroup) { alert('먼저 수목을 추가할 그룹을 선택해주세요.'); return; } currentClickPosition = { lat: latlng.getLat(), lng: latlng.getLng() }; openTreeModal(); }
+    function addNewTreeAt(latlng) { if (!currentGroup) { showCustomAlert('먼저 수목을 추가할 그룹을 선택해주세요.'); return; } currentClickPosition = { lat: latlng.getLat(), lng: latlng.getLng() }; openTreeModal(); }
     function panToTree(treeId) { const tree = trees.find(t => t.id === treeId); if (tree?.lat && tree?.lng) { map.panTo(new kakao.maps.LatLng(tree.lat, tree.lng)); if (window.innerWidth <= 1024) { document.getElementById('right-sidebar').classList.remove('visible'); document.getElementById('backdrop').style.display = 'none'; } } }
     
     function showMyLocation() {
         if (location.protocol !== 'https:') {
-            return alert('보안(HTTPS) 연결이 필요합니다. 아이폰, 아이패드 등 iOS 기기에서는 HTTPS 환경에서만 위치 정보를 사용할 수 있습니다.');
+            return showCustomAlert('보안(HTTPS) 연결이 필요합니다. 아이폰, 아이패드 등 iOS 기기에서는 HTTPS 환경에서만 위치 정보를 사용할 수 있습니다.');
         }
 
         if (navigator.geolocation) {
@@ -1081,18 +1091,18 @@
                             errorMessage = "위치를 가져오는 데 시간이 초과되었습니다.";
                             break;
                     }
-                    alert(errorMessage);
+                    showCustomAlert(errorMessage);
                 }
             );
         } else {
-            alert("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
+            showCustomAlert("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
         }
     }
 
     function changeMapType(type) { document.getElementById('roadmapBtn').classList.toggle('active', type === 'ROADMAP'); document.getElementById('satelliteBtn').classList.toggle('active', type !== 'ROADMAP'); map.setMapTypeId(kakao.maps.MapTypeId[type]); }
     function toggleSearchType(event) { document.getElementById('keywordSearchContainer').style.display = event.target.value === 'keyword' ? 'block' : 'none'; document.getElementById('coordSearchContainer').style.display = event.target.value === 'coord' ? 'block' : 'none'; }
-    function searchLocation() { const keyword = document.getElementById('searchInput').value.trim(); if (!keyword) return alert('검색어를 입력하세요.'); new kakao.maps.services.Places().keywordSearch(keyword, (data, status) => { if (status === kakao.maps.services.Status.OK) map.setCenter(new kakao.maps.LatLng(data[0].y, data[0].x)); else geocoder.addressSearch(keyword, (result, status) => { if (status === kakao.maps.services.Status.OK) map.setCenter(new kakao.maps.LatLng(result[0].y, result[0].x)); else alert('검색 결과가 없습니다.'); }); }); }
-    function searchByCoords() { const lat = parseFloat(document.getElementById('latInput').value), lng = parseFloat(document.getElementById('lngInput').value); if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return alert('유효한 위도(-90~90), 경도(-180~180)를 입력해주세요.'); map.setCenter(new kakao.maps.LatLng(lat, lng)); }
+    function searchLocation() { const keyword = document.getElementById('searchInput').value.trim(); if (!keyword) return showCustomAlert('검색어를 입력하세요.'); new kakao.maps.services.Places().keywordSearch(keyword, (data, status) => { if (status === kakao.maps.services.Status.OK) map.setCenter(new kakao.maps.LatLng(data[0].y, data[0].x)); else geocoder.addressSearch(keyword, (result, status) => { if (status === kakao.maps.services.Status.OK) map.setCenter(new kakao.maps.LatLng(result[0].y, result[0].x)); else showCustomAlert('검색 결과가 없습니다.'); }); }); }
+    function searchByCoords() { const lat = parseFloat(document.getElementById('latInput').value), lng = parseFloat(document.getElementById('lngInput').value); if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return showCustomAlert('유효한 위도(-90~90), 경도(-180~180)를 입력해주세요.'); map.setCenter(new kakao.maps.LatLng(lat, lng)); }
     function selectModalColor(element, color) { document.querySelectorAll('#treeModal .color-option').forEach(o => o.classList.remove('active')); element.classList.add('active'); selectedColor = color; }
     function openFolderModal(folderId = null) { currentFolderId = folderId; const modal = document.getElementById('folderModal'); if(folderId){ const folder = folders.find(f => f.id === folderId); if(folder) { document.getElementById('folderModalTitle').textContent = '폴더 수정'; document.getElementById('folderName').value = folder.name; } } else { document.getElementById('folderModalTitle').textContent = '새 폴더 생성'; document.getElementById('folderName').value = ''; } modal.style.display = 'flex'; }
     function openGroupModal(groupId = null) { currentGroupId = groupId; const modal = document.getElementById('groupModal'); const deleteBtn = document.getElementById('groupModalDeleteBtn'); if (groupId) { const group = groups.find(g => g.id === groupId); if (group) { document.getElementById('groupModalTitle').textContent = '그룹 수정'; document.getElementById('groupName').value = group.name; populateFolderSelect(group.folderId); deleteBtn.style.display = 'inline-block'; deleteBtn.onclick = () => { closeModalById('groupModal'); setTimeout(() => deleteGroup(groupId), 50); }; } } else { document.getElementById('groupModalTitle').textContent = '새 그룹 생성'; document.getElementById('groupName').value = ''; populateFolderSelect(); deleteBtn.style.display = 'none'; } modal.style.display = 'flex'; }
@@ -1119,6 +1129,17 @@
     function filterAndSortTrees() { currentTreePage = 1; updateTreeList(); updateMapMarkers(); }
     function editTree(treeId) { panToTree(treeId); openTreeModal(treeId); }
     
+    function showCustomAlert(message) {
+        const modal = document.getElementById('custom-alert-modal');
+        const messageP = document.getElementById('custom-alert-message');
+        messageP.innerText = message;
+        modal.style.display = 'flex';
+    }
+
+    function hideCustomAlert() {
+        document.getElementById('custom-alert-modal').style.display = 'none';
+    }
+
     function showMapMessage(message) {
         const bar = document.getElementById('map-message-bar');
         bar.textContent = message;
@@ -1172,7 +1193,7 @@
                 updateMapMarkers();
             } catch(error) {
                 console.error("위치 업데이트 실패:", error);
-                alert("위치 업데이트에 실패했습니다.");
+                showCustomAlert("위치 업데이트에 실패했습니다.");
             }
         } else if (appMode === 'copy') {
             try {
@@ -1186,7 +1207,7 @@
                 openTreeModal(docRef.id);
             } catch(error) {
                 console.error("수목 복사 실패:", error);
-                alert("수목 복사에 실패했습니다.");
+                showCustomAlert("수목 복사에 실패했습니다.");
             }
         }
         

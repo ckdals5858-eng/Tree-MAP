@@ -420,6 +420,12 @@
         <div class="tree-sidebar" id="right-sidebar">
             <h3 id="rightSidebarTitle" style="padding: 15px 10px; background: #f1f3f5; border-bottom: 1px solid #e9ecef;">대상목 리스트</h3>
             <div class="tree-section">
+                <div id="tree-list-actions" style="padding: 10px; display: flex; gap: 5px; border-bottom: 1px solid #e9ecef;">
+                    <button id="startMoveModeBtn" class="btn btn-secondary" style="font-size: 12px;">그룹이동</button>
+                    <button id="startDeleteModeBtn" class="btn btn-secondary" style="font-size: 12px;">일괄삭제</button>
+                    <button id="executeActionBtn" class="btn" style="display:none; font-size: 12px;"></button>
+                    <button id="cancelActionBtn" class="btn btn-secondary" style="display:none; font-size: 12px;">취소</button>
+                </div>
                 <div class="filters">
                     <div id="colorFilterContainer" class="filter-group">
                         <span class="filter-title">색상:</span>
@@ -555,12 +561,31 @@
         <div style="text-align: right; margin-top: 15px;"><button type="button" class="btn" onclick="closeModalById('targetModal')">확인</button></div>
     </div></div>
 
-    <div id="custom-alert-modal" class="modal">
+    <div id="custom-alert-modal" class="modal" style="z-index: 6000;">
         <div class="modal-content" style="max-width: 320px; text-align: center;">
             <p id="custom-alert-message" style="margin-bottom: 20px; line-height: 1.6;"></p>
             <button id="custom-alert-ok-btn" class="btn" style="width: 100%;">확인</button>
         </div>
     </div>
+
+    <div id="groupMoveModal" class="modal">
+        <div class="modal-content" style="max-width: 350px;">
+            <h4>대상 그룹 선택</h4>
+            <div class="form-group" style="margin-top: 15px;">
+                <label>이동할 폴더</label>
+                <select id="moveFolderSelect"></select>
+            </div>
+            <div class="form-group">
+                <label>이동할 그룹</label>
+                <select id="moveGroupSelect"></select>
+            </div>
+            <div style="text-align: right; margin-top: 20px; display: flex; gap: 5px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModalById('groupMoveModal')">취소</button>
+                <button type="button" id="confirmMoveBtn" class="btn">이동</button>
+            </div>
+        </div>
+    </div>
+
 
     <script>
     const firebaseConfig = {
@@ -586,6 +611,7 @@
     
     let appMode = 'normal';
     let activeTreeData = null;
+    let listMode = 'normal'; // 'normal', 'move', 'delete'
 
     document.addEventListener('DOMContentLoaded', function() {
         kakao.maps.load(initMap);
@@ -686,6 +712,15 @@
         document.getElementById('modalCancelBtn').addEventListener('click', () => closeModalById('treeModal'));
         document.getElementById('modalUpdateLocationBtn').addEventListener('click', startUpdateLocation);
         document.getElementById('modalCopyBtn').addEventListener('click', startCopyTree);
+
+        // Bulk Action Listeners
+        document.getElementById('startMoveModeBtn').addEventListener('click', () => toggleListMode('move'));
+        document.getElementById('startDeleteModeBtn').addEventListener('click', () => toggleListMode('delete'));
+        document.getElementById('cancelActionBtn').addEventListener('click', () => toggleListMode('normal'));
+        document.getElementById('executeActionBtn').addEventListener('click', executeBulkAction);
+        document.getElementById('confirmMoveBtn').addEventListener('click', confirmGroupMove);
+        document.getElementById('moveFolderSelect').addEventListener('change', populateMoveGroupSelect);
+
 
         setupCheckboxFilter('colorFilterContainer');
         setupCheckboxFilter('gradeFilterContainer');
@@ -883,10 +918,15 @@
     }
     
     function exportData() {
-        if (trees.length === 0) return showCustomAlert('내보낼 데이터가 없습니다.');
+        // [수정] 현재 체크된(보이는) 그룹의 수목만 필터링
+        const visibleGroupIds = groups.filter(g => g.visible !== false).map(g => g.id);
+        const treesToExport = trees.filter(tree => visibleGroupIds.includes(tree.groupId));
+
+        if (treesToExport.length === 0) return showCustomAlert('내보낼 데이터가 없습니다.\n좌측 사이드바에서 내보낼 그룹을 체크해주세요.');
+        
         const boolToOX = (val) => val ? 'O' : 'X';
         const dataToExport = [];
-        trees.forEach(tree => {
+        treesToExport.forEach(tree => {
             const group = groups.find(g => g.id === tree.groupId);
             const folder = group ? folders.find(f => f.id === group.folderId) : null;
             dataToExport.push({
@@ -1026,12 +1066,13 @@
     }
 
     function updateFolderList() { const folderListDiv = document.getElementById('folderList'); folderListDiv.innerHTML = ''; if (folders.length === 0) { folderListDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">폴더가 없습니다.</div>'; return; } folders.forEach(folder => { const details = document.createElement('details'); details.open = true; details.innerHTML = `<summary><span class="folder-name">${folder.name}</span><div class="folder-actions"><button class="action-btn edit-btn">수정</button><button class="action-btn delete-btn">삭제</button></div></summary>`; details.querySelector('.edit-btn').addEventListener('click', (e) => {e.stopPropagation(); openFolderModal(folder.id);}); details.querySelector('.delete-btn').addEventListener('click', (e) => {e.stopPropagation(); deleteFolder(folder.id);}); const groupContainer = document.createElement('div'); groupContainer.className = 'group-container'; const groupsInFolder = groups.filter(g => g.folderId === folder.id).sort((a,b) => a.name.localeCompare(b.name, 'ko')); if (groupsInFolder.length > 0) { groupsInFolder.forEach(group => { const div = document.createElement('div'); div.className = `group-item ${currentGroup?.id === group.id ? 'active' : ''}`; const treeCount = trees.filter(t => t.groupId === group.id).length; div.innerHTML = `<div class="group-content"><input type="checkbox" class="group-checkbox" ${group.visible !== false ? 'checked' : ''}><div class="group-name">${group.name} (${treeCount}개)</div></div>`; div.querySelector('.group-name').addEventListener('click', () => selectGroup(group.id)); div.querySelector('.group-checkbox').addEventListener('change', (e) => toggleGroupVisibility(group.id, e.target.checked)); div.addEventListener('contextmenu', (e) => { e.preventDefault(); openGroupModal(group.id); }); addLongPressListener(div, () => openGroupModal(group.id)); groupContainer.appendChild(div); }); } else { groupContainer.innerHTML = '<div style="font-size: 11px; color: #888; padding: 5px 0;">그룹이 없습니다.</div>'; } details.appendChild(groupContainer); folderListDiv.appendChild(details); }); }
-    function updateTreeList() { const treeList = document.getElementById('treeList'); const treePagination = document.getElementById('treePagination'); const rightSidebarTitle = document.getElementById('rightSidebarTitle'); const treeListInfo = document.getElementById('treeListInfo'); treeList.innerHTML = ''; treePagination.innerHTML = ''; if (!currentGroup) { treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">그룹을 선택하세요.</div>'; rightSidebarTitle.textContent = '대상목 리스트'; treeListInfo.textContent = ''; return; } const folder = folders.find(f => f.id === currentGroup.folderId); rightSidebarTitle.innerHTML = `대상목 리스트 <small style="display: block; font-size: 13px; color: #555; font-weight: normal; margin-top: 4px;">(${folder?.name || '미지정'} / ${currentGroup.name})</small>`; let displayTrees = trees.filter(tree => tree.groupId === currentGroup.id); const selectedColors = getSelectedFilterValues('colorFilterContainer'); if (selectedColors.length > 0) displayTrees = displayTrees.filter(tree => selectedColors.includes(tree.color)); const selectedGrades = getSelectedFilterValues('gradeFilterContainer'); if (selectedGrades.length > 0) displayTrees = displayTrees.filter(tree => selectedGrades.includes(String(tree.grade))); treeListInfo.textContent = `총 ${displayTrees.length}개의 대상목`; const sortFilter = document.getElementById('sortFilter').value; displayTrees.sort((a, b) => sortFilter === 'number_desc' ? String(b.number).localeCompare(String(a.number), undefined, {numeric: true}) : String(a.number).localeCompare(String(b.number), undefined, {numeric: true})); if (displayTrees.length === 0) { treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">표시할 수목이 없습니다.</div>'; return; } const totalPages = Math.ceil(displayTrees.length / treesPerPage); const paginatedTrees = displayTrees.slice((currentTreePage - 1) * treesPerPage, currentTreePage * treesPerPage); if (totalPages > 1) { let paginationHTML = `<span class="page-info">${currentTreePage} / ${totalPages}</span>`; if (currentTreePage > 1) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage - 1})">이전</button>`; const startPage = Math.max(1, currentTreePage - 2), endPage = Math.min(totalPages, currentTreePage + 2); for (let i = startPage; i <= endPage; i++) paginationHTML += `<button class="page-btn ${i === currentTreePage ? 'active' : ''}" onclick="changeTreePage(${i})">${i}</button>`; if (currentTreePage < totalPages) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage + 1})">다음</button>`; treePagination.innerHTML = paginationHTML; } paginatedTrees.forEach(tree => { const div = document.createElement('div'); div.className = 'group-item'; let details = []; if (tree.diameter) details.push(`흉고:${tree.diameter}${String(tree.diameter).match(/[^0-9\.]/) ? '' : 'cm'}`); if (tree.height) details.push(`수고:${tree.height}${String(tree.height).match(/[^0-9\.]/) ? '' : 'm'}`); if (tree.crownWidth1 && tree.crownWidth2) details.push(`수관폭:${tree.crownWidth1}x${tree.crownWidth2}m`); if (tree.grade) details.push(`등급:${tree.grade}`); div.innerHTML = `<div class="group-content"><div style="width:12px;height:12px;border-radius:50%;background:${colorMap[tree.color]||colorMap.gray};flex-shrink:0;margin-top:3px;"></div><div style="flex:1;min-width:0;"><div><strong>${tree.number}</strong> - ${tree.species}</div><div class="small-text">${details.join(' / ')}</div></div></div>`; div.addEventListener('click', () => panToTree(tree.id)); div.addEventListener('contextmenu', e => { e.preventDefault(); openTreeModal(tree.id); }); addLongPressListener(div, () => openTreeModal(tree.id)); treeList.appendChild(div); }); }
+    function updateTreeList() { const treeList = document.getElementById('treeList'); const treePagination = document.getElementById('treePagination'); const rightSidebarTitle = document.getElementById('rightSidebarTitle'); const treeListInfo = document.getElementById('treeListInfo'); treeList.innerHTML = ''; treePagination.innerHTML = ''; if (!currentGroup) { toggleListMode('normal'); treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">그룹을 선택하세요.</div>'; rightSidebarTitle.textContent = '대상목 리스트'; treeListInfo.textContent = ''; return; } const folder = folders.find(f => f.id === currentGroup.folderId); rightSidebarTitle.innerHTML = `대상목 리스트 <small style="display: block; font-size: 13px; color: #555; font-weight: normal; margin-top: 4px;">(${folder?.name || '미지정'} / ${currentGroup.name})</small>`; let displayTrees = trees.filter(tree => tree.groupId === currentGroup.id); const selectedColors = getSelectedFilterValues('colorFilterContainer'); if (selectedColors.length > 0) displayTrees = displayTrees.filter(tree => selectedColors.includes(tree.color)); const selectedGrades = getSelectedFilterValues('gradeFilterContainer'); if (selectedGrades.length > 0) displayTrees = displayTrees.filter(tree => selectedGrades.includes(String(tree.grade))); treeListInfo.textContent = `총 ${displayTrees.length}개의 대상목`; const sortFilter = document.getElementById('sortFilter').value; displayTrees.sort((a, b) => sortFilter === 'number_desc' ? String(b.number).localeCompare(String(a.number), undefined, {numeric: true}) : String(a.number).localeCompare(String(b.number), undefined, {numeric: true})); if (displayTrees.length === 0) { toggleListMode('normal'); treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">표시할 수목이 없습니다.</div>'; return; } const totalPages = Math.ceil(displayTrees.length / treesPerPage); const paginatedTrees = displayTrees.slice((currentTreePage - 1) * treesPerPage, currentTreePage * treesPerPage); if (totalPages > 1) { let paginationHTML = `<span class="page-info">${currentTreePage} / ${totalPages}</span>`; if (currentTreePage > 1) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage - 1})">이전</button>`; const startPage = Math.max(1, currentTreePage - 2), endPage = Math.min(totalPages, currentTreePage + 2); for (let i = startPage; i <= endPage; i++) paginationHTML += `<button class="page-btn ${i === currentTreePage ? 'active' : ''}" onclick="changeTreePage(${i})">${i}</button>`; if (currentTreePage < totalPages) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage + 1})">다음</button>`; treePagination.innerHTML = paginationHTML; } paginatedTrees.forEach(tree => { const div = document.createElement('div'); div.className = 'group-item'; div.innerHTML = `<div class="group-content"><input type="checkbox" class="tree-checkbox" data-id="${tree.id}" style="display:none; margin-right: 8px; margin-top: 3px; transform: scale(1.1);"><div style="width:12px;height:12px;border-radius:50%;background:${colorMap[tree.color]||colorMap.gray};flex-shrink:0;margin-top:3px;"></div><div style="flex:1;min-width:0;"><div><strong>${tree.number}</strong> - ${tree.species}</div><div class="small-text">${getTreeDetails(tree)}</div></div></div>`; const nameDiv = div.querySelector('strong, .small-text, div[style*="flex:1"]'); nameDiv.addEventListener('click', () => { if (listMode === 'normal') panToTree(tree.id); else div.querySelector('.tree-checkbox').click(); }); div.addEventListener('contextmenu', e => { e.preventDefault(); if (listMode === 'normal') openTreeModal(tree.id); }); addLongPressListener(div, () => { if (listMode === 'normal') openTreeModal(tree.id); }); treeList.appendChild(div); }); toggleListMode(listMode, true); }
+    function getTreeDetails(tree) { let details = []; if (tree.diameter) details.push(`흉고:${tree.diameter}${String(tree.diameter).match(/[^0-9\.]/) ? '' : 'cm'}`); if (tree.height) details.push(`수고:${tree.height}${String(tree.height).match(/[^0-9\.]/) ? '' : 'm'}`); if (tree.crownWidth1 && tree.crownWidth2) details.push(`수관폭:${tree.crownWidth1}x${tree.crownWidth2}m`); if (tree.grade) details.push(`등급:${tree.grade}`); return details.join(' / '); }
     async function handleFolderFormSubmit(e) { e.preventDefault(); const folderName = document.getElementById('folderName').value.trim(); if (!folderName || !currentUser) return; try { if (currentFolderId) { await db.collection('users').doc(currentUser.uid).collection('folders').doc(currentFolderId).update({ name: folderName }); } else { await db.collection('users').doc(currentUser.uid).collection('folders').add({ name: folderName }); } await loadUserData(); closeModalById('folderModal'); } catch (error) { console.error("폴더 저장 오류:", error); showCustomAlert("폴더 저장 실패."); } }
     async function deleteFolder(folderId) { if (!currentUser) return; const folder = folders.find(f => f.id === folderId); if (!folder || !confirm(`'${folder.name}' 폴더와 모든 하위 데이터를 삭제하시겠습니까?`)) return; const batch = db.batch(); const groupsToDelete = groups.filter(g => g.folderId === folderId); for (const group of groupsToDelete) { trees.filter(t => t.groupId === group.id).forEach(t => batch.delete(db.collection('users').doc(currentUser.uid).collection('trees').doc(t.id))); batch.delete(db.collection('users').doc(currentUser.uid).collection('groups').doc(group.id)); } batch.delete(db.collection('users').doc(currentUser.uid).collection('folders').doc(folderId)); try { await batch.commit(); await loadUserData(); } catch (error) { console.error("폴더 삭제 오류:", error); showCustomAlert("폴더 삭제 실패."); } }
     async function handleGroupFormSubmit(e) { e.preventDefault(); const groupName = document.getElementById('groupName').value.trim(); const folderId = document.getElementById('groupFolderSelect').value; if (!groupName || !folderId || !currentUser) return; const groupData = { name: groupName, folderId, visible: true }; try { if (currentGroupId) { await db.collection('users').doc(currentUser.uid).collection('groups').doc(currentGroupId).update({ name: groupName, folderId }); } else { await db.collection('users').doc(currentUser.uid).collection('groups').add(groupData); } await loadUserData(); closeModalById('groupModal'); } catch (error) { console.error("그룹 저장 오류:", error); showCustomAlert("그룹 저장 실패."); } }
     async function deleteGroup(groupId) { if (!currentUser) return; const group = groups.find(g => g.id === groupId); if (!group) return; const treeCount = trees.filter(t => t.groupId === groupId).length; if (!confirm(`'${group.name}' 그룹과 포함된 ${treeCount}개의 수목을 모두 삭제하시겠습니까?`)) return; const batch = db.batch(); trees.filter(t => t.groupId === groupId).forEach(t => batch.delete(db.collection('users').doc(currentUser.uid).collection('trees').doc(t.id))); batch.delete(db.collection('users').doc(currentUser.uid).collection('groups').doc(groupId)); try { await batch.commit(); if (currentGroup?.id === groupId) currentGroup = null; await loadUserData(); } catch (error) { console.error("그룹 삭제 오류:", error); showCustomAlert("그룹 삭제 실패."); } }
-    async function deleteTree(treeId) { if (!currentUser) return; const treeToDelete = trees.find(t => t.id === treeId); if (!treeToDelete || !confirm(`'${treeToDelete.number} - ${treeToDelete.species}' 수목 정보를 삭제하시겠습니까?`)) return; try { await db.collection('users').doc(currentUser.uid).collection('trees').doc(treeId).delete(); trees = trees.filter(t => t.id !== treeId); updateTreeList(); updateFolderList(); updateMapMarkers(); } catch (error) { console.error("수목 정보 삭제 오류:", error); showCustomAlert("수목 정보 삭제 실패."); } }
+    async function deleteTree(treeId) { if (!currentUser) return; const treeToDelete = trees.find(t => t.id === treeId); if (!treeToDelete || !confirm(`'${treeToDelete.number} - ${treeToDelete.species}' 수목 정보를 삭제하시겠습니까?`)) return; try { await db.collection('users').doc(currentUser.uid).collection('trees').doc(treeId).delete(); await loadUserData(); } catch (error) { console.error("수목 정보 삭제 오류:", error); showCustomAlert("수목 정보 삭제 실패."); } }
     function addLongPressListener(element, callback, duration = 500) { let timer; const start = (e) => { if (e.touches?.length > 1) return; timer = setTimeout(() => { timer = null; callback?.(e); }, duration); }; const cancel = () => clearTimeout(timer); element.addEventListener("touchstart", start, { passive: true }); ["touchend", "touchmove"].forEach(evt => element.addEventListener(evt, cancel)); }
     
     function initMap() {
@@ -1112,6 +1153,7 @@
     function selectGroup(groupId) {
         currentGroup = groups.find(g => g.id === groupId) || null;
         currentTreePage = 1;
+        toggleListMode('normal');
         updateFolderList();
         updateTreeList();
         
@@ -1129,27 +1171,26 @@
     function filterAndSortTrees() { currentTreePage = 1; updateTreeList(); updateMapMarkers(); }
     function editTree(treeId) { panToTree(treeId); openTreeModal(treeId); }
     
+    // Custom Alert Functions
     function showCustomAlert(message) {
         const modal = document.getElementById('custom-alert-modal');
         const messageP = document.getElementById('custom-alert-message');
         messageP.innerText = message;
         modal.style.display = 'flex';
     }
-
     function hideCustomAlert() {
         document.getElementById('custom-alert-modal').style.display = 'none';
     }
 
+    // App Mode Functions
     function showMapMessage(message) {
         const bar = document.getElementById('map-message-bar');
         bar.textContent = message;
         bar.style.display = 'block';
     }
-
     function hideMapMessage() {
         document.getElementById('map-message-bar').style.display = 'none';
     }
-
     function startUpdateLocation() {
         activeTreeData = trees.find(t => t.id === currentTreeId);
         if (!activeTreeData) return;
@@ -1157,7 +1198,6 @@
         closeModalById('treeModal');
         showMapMessage(`'${activeTreeData.number}' 수목의 새 위치를 선택하세요. (취소: Esc 또는 다른 곳 클릭)`);
     }
-
     function startCopyTree() {
         const sourceTree = trees.find(t => t.id === currentTreeId);
         if (!sourceTree) return;
@@ -1173,7 +1213,6 @@
     
     async function handleMapClick(mouseEvent) {
         if (appMode === 'normal') return;
-
         const latlng = mouseEvent.latLng;
         const newLat = latlng.getLat();
         const newLng = latlng.getLng();
@@ -1181,19 +1220,12 @@
         if (appMode === 'updateLocation') {
             try {
                 const treeId = activeTreeData.id;
-                await db.collection('users').doc(currentUser.uid).collection('trees').doc(treeId).update({
-                    lat: newLat,
-                    lng: newLng
-                });
+                await db.collection('users').doc(currentUser.uid).collection('trees').doc(treeId).update({ lat: newLat, lng: newLng });
                 const treeIndex = trees.findIndex(t => t.id === treeId);
-                if (treeIndex > -1) {
-                    trees[treeIndex].lat = newLat;
-                    trees[treeIndex].lng = newLng;
-                }
+                if (treeIndex > -1) { trees[treeIndex].lat = newLat; trees[treeIndex].lng = newLng; }
                 updateMapMarkers();
             } catch(error) {
-                console.error("위치 업데이트 실패:", error);
-                showCustomAlert("위치 업데이트에 실패했습니다.");
+                console.error("위치 업데이트 실패:", error); showCustomAlert("위치 업데이트에 실패했습니다.");
             }
         } else if (appMode === 'copy') {
             try {
@@ -1201,13 +1233,10 @@
                 const docRef = await db.collection('users').doc(currentUser.uid).collection('trees').add(newTreeData);
                 const newTreeWithId = { id: docRef.id, ...newTreeData };
                 trees.push(newTreeWithId);
-                updateFolderList();
-                updateTreeList();
-                updateMapMarkers();
+                updateFolderList(); updateTreeList(); updateMapMarkers();
                 openTreeModal(docRef.id);
             } catch(error) {
-                console.error("수목 복사 실패:", error);
-                showCustomAlert("수목 복사에 실패했습니다.");
+                console.error("수목 복사 실패:", error); showCustomAlert("수목 복사에 실패했습니다.");
             }
         }
         
@@ -1218,12 +1247,118 @@
     
     document.addEventListener('keydown', (e) => {
         if (e.key === "Escape" && appMode !== 'normal') {
-            appMode = 'normal';
-            activeTreeData = null;
-            hideMapMessage();
+            appMode = 'normal'; activeTreeData = null; hideMapMessage();
         }
     });
 
+    // Bulk Action Functions
+    function toggleListMode(mode, forceUpdate = false) {
+        if (!forceUpdate && listMode === mode) return;
+        listMode = mode;
+        const startMoveBtn = document.getElementById('startMoveModeBtn');
+        const startDeleteBtn = document.getElementById('startDeleteModeBtn');
+        const executeBtn = document.getElementById('executeActionBtn');
+        const cancelBtn = document.getElementById('cancelActionBtn');
+        const treeCheckboxes = document.querySelectorAll('.tree-checkbox');
+
+        if (listMode === 'normal') {
+            startMoveBtn.style.display = 'block';
+            startDeleteBtn.style.display = 'block';
+            executeBtn.style.display = 'none';
+            cancelBtn.style.display = 'none';
+            treeCheckboxes.forEach(cb => { cb.style.display = 'none'; cb.checked = false; });
+        } else {
+            startMoveBtn.style.display = 'none';
+            startDeleteBtn.style.display = 'none';
+            executeBtn.style.display = 'block';
+            cancelBtn.style.display = 'block';
+            executeBtn.textContent = listMode === 'move' ? '선택 항목 이동' : '선택 항목 삭제';
+            treeCheckboxes.forEach(cb => cb.style.display = 'block');
+        }
+    }
+
+    function executeBulkAction() {
+        const selectedIds = Array.from(document.querySelectorAll('.tree-checkbox:checked')).map(cb => cb.dataset.id);
+        if (selectedIds.length === 0) {
+            return showCustomAlert('먼저 항목을 선택해주세요.');
+        }
+
+        if (listMode === 'move') {
+            populateMoveFolderSelect();
+            openModalById('groupMoveModal');
+        } else if (listMode === 'delete') {
+            if (confirm(`${selectedIds.length}개의 수목을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) {
+                deleteSelectedTrees(selectedIds);
+            }
+        }
+    }
+    
+    async function deleteSelectedTrees(ids) {
+        const batch = db.batch();
+        ids.forEach(id => {
+            const docRef = db.collection('users').doc(currentUser.uid).collection('trees').doc(id);
+            batch.delete(docRef);
+        });
+        try {
+            await batch.commit();
+            showCustomAlert(`${ids.length}개의 수목을 삭제했습니다.`);
+            toggleListMode('normal');
+            await loadUserData();
+        } catch(error) {
+            console.error("일괄 삭제 실패:", error);
+            showCustomAlert("수목 삭제에 실패했습니다.");
+        }
+    }
+
+    function populateMoveFolderSelect() {
+        const select = document.getElementById('moveFolderSelect');
+        select.innerHTML = '';
+        folders.forEach(folder => {
+            const option = document.createElement('option');
+            option.value = folder.id;
+            option.textContent = folder.name;
+            select.appendChild(option);
+        });
+        populateMoveGroupSelect();
+    }
+
+    function populateMoveGroupSelect() {
+        const folderId = document.getElementById('moveFolderSelect').value;
+        const select = document.getElementById('moveGroupSelect');
+        select.innerHTML = '';
+        groups.filter(g => g.folderId === folderId).forEach(group => {
+            const option = document.createElement('option');
+            option.value = group.id;
+            option.textContent = group.name;
+            select.appendChild(option);
+        });
+    }
+
+    async function confirmGroupMove() {
+        const selectedIds = Array.from(document.querySelectorAll('.tree-checkbox:checked')).map(cb => cb.dataset.id);
+        const targetGroupId = document.getElementById('moveGroupSelect').value;
+        if (!targetGroupId) {
+            return showCustomAlert('이동할 그룹을 선택해주세요.');
+        }
+
+        const batch = db.batch();
+        selectedIds.forEach(id => {
+            const docRef = db.collection('users').doc(currentUser.uid).collection('trees').doc(id);
+            batch.update(docRef, { groupId: targetGroupId });
+        });
+        try {
+            await batch.commit();
+            showCustomAlert(`${selectedIds.length}개의 수목을 이동했습니다.`);
+            closeModalById('groupMoveModal');
+            toggleListMode('normal');
+            await loadUserData();
+        } catch(error) {
+            console.error("그룹 이동 실패:", error);
+            showCustomAlert("그룹 이동에 실패했습니다.");
+        }
+    }
+
+    // Sidebar Toggle Functions
     function toggleLeftSidebarDesktop() {
         const sidebar = document.getElementById('left-sidebar');
         const btn = document.getElementById('toggle-left-sidebar-desktop');
@@ -1231,7 +1366,6 @@
         btn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
         setTimeout(() => map && map.relayout(), 310);
     }
-
     function toggleRightSidebarDesktop() {
         const sidebar = document.getElementById('right-sidebar');
         const btn = document.getElementById('toggle-right-sidebar-desktop');

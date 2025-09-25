@@ -134,7 +134,20 @@
             font-size: 13px; background: #007bff; color: white; flex: 1;
         }
         .btn-secondary { background: #6c757d; }
+        .btn-light-secondary { background: #adb5bd; }
         
+        #modal-button-group .btn {
+            padding: 8px 10px;
+            font-size: 12px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            flex-grow: 1;
+        }
+        #modal-button-group #modalDeleteBtn {
+            background: #dc3545;
+            flex-grow: 0;
+        }
+
         .modal {
             display: none; position: fixed; z-index: 5000; left: 0; top: 0;
             width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
@@ -509,10 +522,10 @@
                 <div class="color-option" style="background: #a4b0be;" data-color="gray"></div>
                 <div class="color-option" style="background: #ff4757;" data-color="red"></div>
             </div></div>
-            <div id="modal-button-group" style="margin-top: 15px; display: flex; flex-wrap: wrap; gap: 5px;">
-                <button type="button" id="modalDeleteBtn" class="btn" style="background: #dc3545; margin-right: auto; display: none;">삭제</button>
-                <button type="button" id="modalUpdateLocationBtn" class="btn btn-secondary" style="display: none;">위치 수정</button>
-                <button type="button" id="modalCopyBtn" class="btn btn-secondary" style="display: none;">복사하기</button>
+            <div id="modal-button-group" style="margin-top: 15px; display: flex; flex-wrap: nowrap; gap: 5px; align-items: center;">
+                <button type="button" id="modalDeleteBtn" class="btn" style="margin-right: auto; display: none;">삭제</button>
+                <button type="button" id="modalUpdateLocationBtn" class="btn btn-light-secondary" style="display: none;">위치수정</button>
+                <button type="button" id="modalCopyBtn" class="btn btn-light-secondary" style="display: none;">복사하기</button>
                 <button type="button" id="modalCancelBtn" class="btn btn-secondary">취소</button>
                 <button type="submit" id="modalSaveBtn" class="btn">저장</button>
             </div>
@@ -564,9 +577,8 @@
     const colorMap = { red: '#ff4757', green: '#2ed573', blue: '#3742fa', orange: '#ffa502', gray: '#a4b0be' };
     const validColors = Object.keys(colorMap);
     
-    // 앱 모드 관리 변수
-    let appMode = 'normal'; // 'normal', 'updateLocation', 'copy'
-    let activeTreeData = null; // 위치 수정 또는 복사할 나무의 데이터 저장
+    let appMode = 'normal';
+    let activeTreeData = null;
 
     document.addEventListener('DOMContentLoaded', function() {
         kakao.maps.load(initMap);
@@ -664,7 +676,6 @@
         document.getElementById('groupForm').addEventListener('submit', handleGroupFormSubmit);
         document.getElementById('treeForm').addEventListener('submit', handleTreeFormSubmit);
         
-        // [수정] 신규 버튼 이벤트 리스너 추가
         document.getElementById('modalCancelBtn').addEventListener('click', () => closeModalById('treeModal'));
         document.getElementById('modalUpdateLocationBtn').addEventListener('click', startUpdateLocation);
         document.getElementById('modalCopyBtn').addEventListener('click', startCopyTree);
@@ -842,9 +853,9 @@
 
                 const colorEl = document.querySelector(`#treeModal .color-option[data-color="${tree.color}"]`) || document.querySelector('#treeModal .color-option');
                 selectModalColor(colorEl, tree.color);
-                deleteBtn.style.display = 'inline-block';
-                updateLocationBtn.style.display = 'inline-block';
-                copyBtn.style.display = 'inline-block';
+                deleteBtn.style.display = 'block';
+                updateLocationBtn.style.display = 'block';
+                copyBtn.style.display = 'block';
                 deleteBtn.onclick = () => { deleteTree(treeId); closeModalById('treeModal'); };
             }
         } else {
@@ -975,7 +986,6 @@
             const svgWidth = Math.max(15, textWidth + padding);
             const svgHeight = 19, rectHeight = 13, rectRadius = 7, pointerWidth = 4, fontSize = 8, textY = 11;
             
-            // [수정] 라벨 폰트 색상 변경 (테두리 제거)
             const svgString = `
               <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">
                 <rect x="1" y="1" width="${svgWidth - 2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
@@ -992,7 +1002,6 @@
             marker.setMap(map);
             markers.push(marker);
             kakao.maps.event.addListener(marker, 'click', () => {
-                // [수정] 앱 모드에 따라 지도 클릭 이벤트 분기
                 if (appMode === 'normal') {
                     editTree(tree.id);
                 }
@@ -1105,7 +1114,6 @@
     function filterAndSortTrees() { currentTreePage = 1; updateTreeList(); updateMapMarkers(); }
     function editTree(treeId) { panToTree(treeId); openTreeModal(treeId); }
     
-    // [신규] 위치 수정/복사 관련 함수들
     function showMapMessage(message) {
         const bar = document.getElementById('map-message-bar');
         bar.textContent = message;
@@ -1121,20 +1129,20 @@
         if (!activeTreeData) return;
         appMode = 'updateLocation';
         closeModalById('treeModal');
-        showMapMessage(`'${activeTreeData.number}' 수목의 새 위치를 선택하세요. (취소: Esc)`);
+        showMapMessage(`'${activeTreeData.number}' 수목의 새 위치를 선택하세요. (취소: Esc 또는 다른 곳 클릭)`);
     }
 
     function startCopyTree() {
         const sourceTree = trees.find(t => t.id === currentTreeId);
         if (!sourceTree) return;
         activeTreeData = { ...sourceTree };
-        delete activeTreeData.id; // 새 문서로 생성할 것이므로 id 제거
+        delete activeTreeData.id;
         delete activeTreeData.lat;
         delete activeTreeData.lng;
         
         appMode = 'copy';
         closeModalById('treeModal');
-        showMapMessage(`'${sourceTree.number}' 수목을 복사할 위치를 선택하세요. (취소: Esc)`);
+        showMapMessage(`'${sourceTree.number}' 수목을 복사할 위치를 선택하세요. (취소: Esc 또는 다른 곳 클릭)`);
     }
     
     async function handleMapClick(mouseEvent) {
@@ -1170,7 +1178,7 @@
                 updateFolderList();
                 updateTreeList();
                 updateMapMarkers();
-                openTreeModal(docRef.id); // 복사 후 바로 수정 창 열기
+                openTreeModal(docRef.id);
             } catch(error) {
                 console.error("수목 복사 실패:", error);
                 alert("수목 복사에 실패했습니다.");
@@ -1182,7 +1190,6 @@
         hideMapMessage();
     }
     
-    // Esc 키로 위치 수정/복사 모드 취소
     document.addEventListener('keydown', (e) => {
         if (e.key === "Escape" && appMode !== 'normal') {
             appMode = 'normal';

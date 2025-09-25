@@ -1,664 +1,2147 @@
 <!DOCTYPE html>
+
 <html lang="ko">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=5.0">
-    <title>Hk-Tree-Service</title>
-    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c271d3d7aa3cd2e6702892fa92c3b313&libraries=services&autoload=false"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-    <style>
-        :root {
-            --sidebar-width: 280px;
-            --tree-sidebar-width: 300px;
-        }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-        html, body {
-            height: 100%;
-            overflow: hidden;
-            position: relative;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 14px;
-        }
-        .container { display: flex; height: 100%; }
-        .sidebar {
-            width: var(--sidebar-width); background: #f8f9fa; border-right: 1px solid #e9ecef;
-            display: flex; flex-direction: column; transition: transform 0.3s ease, width 0.3s ease, min-width 0.3s ease; z-index: 3000;
-        }
-        .sidebar-header {
-            background: #2c3e50; color: white; text-align: center; padding: 15px; flex-shrink: 0;
-        }
-        .sidebar-content { flex: 1; overflow-y: auto; }
-        .sidebar-footer {
-            padding: 10px; border-top: 1px solid #e9ecef; display: flex;
-            flex-direction: column; gap: 5px; flex-shrink: 0;
-        }
-        .footer-buttons { display: flex; gap: 5px; }
-        .folder-list { padding: 10px; }
-        details { margin-bottom: 8px; }
-        summary {
-            font-weight: bold; font-size: 14px; padding: 8px; background: #e9ecef;
-            border-radius: 4px; cursor: pointer; list-style: none; position: relative;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        summary::before {
-            content: '▶'; font-size: 10px; margin-right: 8px; transition: transform 0.2s;
-        }
-        details[open] > summary::before { transform: rotate(90deg); }
-        summary:hover .folder-actions { display: flex; }
-        .folder-name { flex-grow: 1; }
-        .folder-actions { display: none; gap: 5px; }
-        .group-container { padding-left: 20px; margin-top: 5px; }
-        .group-item {
-            padding: 10px 12px; margin: 4px 0; background: white; border: 1px solid #dee2e6;
-            border-radius: 4px; font-size: 13px; transition: background-color 0.2s;
-            position: relative; display: flex; justify-content: space-between;
-            align-items: flex-start; word-wrap: break-word; min-height: 32px;
-        }
-        .group-item:active { background-color: #d1e7fd; }
-        .group-content { display: flex; align-items: flex-start; gap: 8px; flex: 1; }
-        .group-checkbox { margin-top: 2px; cursor: pointer; transform: scale(1.2); }
-        .group-name {
-            flex: 1; word-wrap: break-word; word-break: break-all;
-            line-height: 1.4; margin-right: 5px; cursor: pointer;
-        }
-        .group-item.active { background: #007bff; color: white; border-color: #007bff; }
-        .folder-list summary { padding: 4px 6px; font-size: 10px; }
-        .folder-list .group-item { padding: 4px 8px; margin: 1px 0; font-size: 10px; }
-        .folder-list .group-name { line-height: 1.2; }
-        .tree-list .group-item { font-size: 10px; padding: 5px 7px; margin: 1px 0; cursor: pointer; }
-        .tree-list .group-item .small-text { font-size: 9px; color: #6c757d; line-height: 1.3; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .action-btn { padding: 2px 6px; border: none; border-radius: 2px; cursor: pointer; font-size: 10px; opacity: 0.8; }
-        .action-btn:hover { opacity: 1; }
-        .edit-btn { background: #ffc107; color: #333; }
-        .delete-btn { background: #dc3545; color: white; }
-        .main-content { flex: 1; position: relative; }
-        #map { width: 100%; height: 100%; }
-        .tree-sidebar { width: var(--tree-sidebar-width); background: #f8f9fa; border-left: 1px solid #e9ecef; display: flex; flex-direction: column; transition: transform 0.3s ease, width 0.3s ease, min-width 0.3s ease; z-index: 3000; }
-        .tree-section { overflow-y: auto; flex: 1; }
-        .tree-list { padding: 10px; }
-        .tree-pagination { padding: 10px; text-align: center; background: #f8f9fa; border-bottom: 1px solid #e9ecef; font-size: 11px; }
-        .page-btn { padding: 4px 8px; margin: 0 2px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 11px; border-radius: 3px; }
-        .page-btn.active { background: #007bff; color: white; border-color: #007bff; }
-        .page-info { font-size: 11px; color: #666; margin: 0 10px; }
-        .controls-container { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 5px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
-        .controls-toggle-bar { text-align: center; cursor: pointer; padding: 2px 0; font-size: 12px; font-weight: bold; }
-        .controls { display: flex; flex-direction: column; gap: 8px; padding: 5px; }
-        .controls.hidden { display: none; }
-        .map-controls, .search-controls { display: flex; gap: 5px; align-items: center; }
-        .search-input { padding: 6px 10px; border: 1px solid #ddd; border-radius: 3px; font-size: 13px; width: 150px; }
-        .small-btn, .map-type-btn { padding: 6px 10px; border: 1px solid #ddd; border-radius: 3px; cursor: pointer; font-size: 12px; }
-        .small-btn { background: #17a2b8; color: white; border-color: #17a2b8; }
-        .map-type-btn.active { background: #007bff; color: white; border-color: #007bff; }
-        .btn { padding: 8px 12px; border: none; border-radius: 3px; cursor: pointer; font-size: 13px; background: #007bff; color: white; flex: 1; }
-        .btn-secondary { background: #6c757d; }
-        .modal { display: none; position: fixed; z-index: 5000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
-        .modal-content { background-color: white; margin: 5vh auto; padding: 20px; border-radius: 5px; width: 95%; max-width: 450px; max-height: 90vh; overflow-y: auto; }
-        .sub-modal .modal-content { max-width: 350px; z-index: 5001; }
-        .sub-modal .modal-content h4 { margin-bottom: 20px; }
-        .form-group { margin-bottom: 12px; }
-        .form-group-header { display: flex; align-items: center; margin-bottom: 5px; }
-        .form-group-header .main-label { flex-grow: 1; font-size: 13px; font-weight: bold; }
-        .form-group-header .checkbox-label { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
-        .form-group label { font-size: 13px; display: block; text-align: left; font-weight: bold; margin-bottom: 4px;}
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 14px; }
-        .form-row { display: flex; gap: 10px; align-items: flex-start; }
-        .form-row .form-group { flex: 1; margin-bottom: 12px; }
-        .form-row .form-group .form-row { margin-bottom: 0; }
-        .form-row > span { padding: 0 5px; }
-        .defect-group { display: flex; justify-content: space-around; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #e9ecef; }
-        .defect-group label { font-weight: normal; font-size: 12px; display: flex; align-items: center; gap: 4px; cursor:pointer;}
-        .defect-group input { width: auto; }
-        .sub-modal .form-group { display: flex; align-items: center; gap: 8px; margin-bottom: 15px;}
-        .sub-modal .form-group:last-child { margin-bottom: 0; }
-        .sub-modal .form-group label { margin-bottom: 0; flex:1; font-weight: normal;}
-        .sub-modal .form-group input[type="checkbox"] { width: auto; transform: scale(1.2); flex-shrink: 0; }
-        .sub-modal textarea { height: 60px; }
-        .filters { padding: 10px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-        .filter-group { display: flex; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 5px; gap: 4px 8px; align-items: center; font-size: 11px; width: 100%; }
-        .filter-group .filter-title { font-weight: bold; font-size: 12px; margin-right: 5px; white-space: nowrap; }
-        .filter-group label { display: flex; align-items: center; gap: 3px; cursor: pointer; padding: 2px 4px; border-radius: 3px; transition: background-color 0.2s; white-space: nowrap; }
-        .filter-group label:hover { background-color: #e9ecef; }
-        .filter-group input[type="checkbox"] { margin: 0; transform: scale(0.9); }
-        .filters #sortFilter { font-size: 12px; padding: 4px; }
-        .color-selector { display: flex; gap: 5px; margin: 10px 0; }
-        .color-option { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.2s; }
-        .color-option.active { border-color: #333; }
-        .mobile-title { color: white; font-weight: bold; font-size: 16px; }
-        .mobile-controls { display: none; }
-        .backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 2900; }
-        .search-type-selector { display: flex; gap: 10px; margin-bottom: 8px; font-size: 12px; }
-        .search-type-selector label { display: flex; align-items: center; gap: 4px; }
-        #coordSearchContainer { display: none; }
-        .coord-inputs { display: flex; gap: 5px; }
-        .coord-inputs input { width: 120px; }
-        .sidebar-toggle-btn { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2500; background-color: #2c3e50; color: white; border: 1px solid #fff; width: 25px; height: 50px; border-radius: 0 5px 5px 0; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 1px 0 5px rgba(0,0,0,0.2); }
-        #toggle-left-sidebar-desktop { left: 5px; }
-        #toggle-right-sidebar-desktop { right: 5px; border-radius: 5px 0 0 5px; }
-        .sidebar.collapsed, .tree-sidebar.collapsed { width: 0; min-width: 0; overflow: hidden; border: none; padding-left: 0; padding-right: 0; }
-        .desktop-only { display: block; }
+    <meta charset="UTF-8">
 
-        #map-action-overlay {
-            display: none; position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.75); color: white; padding: 10px 20px;
-            border-radius: 5px; z-index: 1500; font-size: 14px; text-align: center;
-        }
-        #map-action-overlay button {
-            background: #dc3545; color: white; border: none; padding: 4px 8px;
-            font-size: 12px; border-radius: 3px; margin-left: 10px; cursor: pointer;
-        }
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=5.0">
 
-        @media (max-width: 1024px) {
-            :root { --sidebar-width: 260px; --tree-sidebar-width: 280px; }
-            .sidebar { position: fixed; top: 52px; left: 0; height: calc(100% - 52px); transform: translateX(calc(var(--sidebar-width) * -1)); box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
-            .tree-sidebar { position: fixed; top: 52px; right: 0; height: calc(100% - 52px); transform: translateX(var(--tree-sidebar-width)); box-shadow: -2px 0 10px rgba(0,0,0,0.1); border-left: none; }
-            .sidebar.visible, .tree-sidebar.visible { transform: translateX(0); }
-            .main-content { height: 100%; }
-            .controls-container { top: 62px; }
-            #map-action-overlay { top: 62px; width: 100%; border-radius: 0; }
-            .mobile-controls { position: fixed; top: 0; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: center; background: #2c3e50; color: white; padding: 10px; z-index: 4000; box-shadow: 0 2px 5px rgba(0,0,0,0.2); height: 52px; }
-            .mobile-btn { background: none; border: 1px solid white; color: white; padding: 8px 12px; border-radius: 4px; font-size: 13px; }
-            .coord-inputs { flex-direction: column; }
-            .coord-inputs input { width: 100%; }
-            .tree-list .group-item { padding: 5px 8px; }
-            .tree-list .group-item .small-text { margin-top: 1px; }
-            .desktop-only { display: none; }
-        }
-    </style>
+    <title>Hk-Tree-Service</title>
+
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c271d3d7aa3cd2e6702892fa92c3b313&libraries=services&autoload=false"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+
+
+    <style>
+
+        :root {
+
+            --sidebar-width: 280px;
+
+            --tree-sidebar-width: 300px;
+
+        }
+
+        * {
+
+            margin: 0;
+
+            padding: 0;
+
+            box-sizing: border-box;
+
+            -webkit-tap-highlight-color: transparent;
+
+        }
+
+        html, body {
+
+            height: 100%;
+
+            overflow: hidden;
+
+            position: relative;
+
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+            font-size: 14px;
+
+        }
+
+        .container { display: flex; height: 100%; }
+
+        .sidebar {
+
+            width: var(--sidebar-width); background: #f8f9fa; border-right: 1px solid #e9ecef;
+
+            display: flex; flex-direction: column; transition: transform 0.3s ease, width 0.3s ease, min-width 0.3s ease; z-index: 3000;
+
+        }
+
+        .sidebar-header {
+
+            background: #2c3e50; color: white; text-align: center; padding: 15px; flex-shrink: 0;
+
+        }
+
+        .sidebar-content { flex: 1; overflow-y: auto; }
+
+        .sidebar-footer {
+
+            padding: 10px; border-top: 1px solid #e9ecef; display: flex;
+
+            flex-direction: column; gap: 5px; flex-shrink: 0;
+
+        }
+
+        .footer-buttons { display: flex; gap: 5px; }
+
+        .folder-list { padding: 10px; }
+
+        details { margin-bottom: 8px; }
+
+        summary {
+
+            font-weight: bold; font-size: 14px; padding: 8px; background: #e9ecef;
+
+            border-radius: 4px; cursor: pointer; list-style: none; position: relative;
+
+            display: flex; justify-content: space-between; align-items: center;
+
+        }
+
+        summary::before {
+
+            content: '▶'; font-size: 10px; margin-right: 8px; transition: transform 0.2s;
+
+        }
+
+        details[open] > summary::before { transform: rotate(90deg); }
+
+        summary:hover .folder-actions { display: flex; }
+
+        .folder-name { flex-grow: 1; }
+
+        .folder-actions { display: none; gap: 5px; }
+
+        .group-container { padding-left: 20px; margin-top: 5px; }
+
+        .group-item {
+
+            padding: 10px 12px; margin: 4px 0; background: white; border: 1px solid #dee2e6;
+
+            border-radius: 4px; font-size: 13px; transition: background-color 0.2s;
+
+            position: relative; display: flex; justify-content: space-between;
+
+            align-items: flex-start; word-wrap: break-word; min-height: 32px;
+
+        }
+
+        .group-item:active { background-color: #d1e7fd; }
+
+        .group-content { display: flex; align-items: flex-start; gap: 8px; flex: 1; }
+
+        .group-checkbox { margin-top: 2px; cursor: pointer; transform: scale(1.2); }
+
+        .group-name {
+
+            flex: 1; word-wrap: break-word; word-break: break-all;
+
+            line-height: 1.4; margin-right: 5px; cursor: pointer;
+
+        }
+
+        .group-item.active { background: #007bff; color: white; border-color: #007bff; }
+
+        
+
+        .folder-list summary { padding: 4px 6px; font-size: 10px; }
+
+        .folder-list .group-item { padding: 4px 8px; margin: 1px 0; font-size: 10px; }
+
+        .folder-list .group-name { line-height: 1.2; }
+
+
+
+        .tree-list .group-item { font-size: 10px; padding: 5px 7px; margin: 1px 0; cursor: pointer; }
+
+        .tree-list .group-item .small-text {
+
+            font-size: 9px; color: #6c757d; line-height: 1.3; margin-top: 2px;
+
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+
+        }
+
+
+
+        .action-btn {
+
+            padding: 2px 6px; border: none; border-radius: 2px;
+
+            cursor: pointer; font-size: 10px; opacity: 0.8;
+
+        }
+
+        .action-btn:hover { opacity: 1; }
+
+        .edit-btn { background: #ffc107; color: #333; }
+
+        .delete-btn { background: #dc3545; color: white; }
+
+        .main-content { flex: 1; position: relative; }
+
+        #map { width: 100%; height: 100%; }
+
+        .tree-sidebar {
+
+            width: var(--tree-sidebar-width); background: #f8f9fa; border-left: 1px solid #e9ecef;
+
+            display: flex; flex-direction: column; transition: transform 0.3s ease, width 0.3s ease, min-width 0.3s ease; z-index: 3000;
+
+        }
+
+        .tree-section { overflow-y: auto; flex: 1; }
+
+        .tree-list { padding: 10px; }
+
+        .tree-pagination {
+
+            padding: 10px; text-align: center; background: #f8f9fa;
+
+            border-bottom: 1px solid #e9ecef; font-size: 11px;
+
+        }
+
+        .page-btn {
+
+            padding: 4px 8px; margin: 0 2px; border: 1px solid #ddd; background: white;
+
+            cursor: pointer; font-size: 11px; border-radius: 3px;
+
+        }
+
+        .page-btn.active { background: #007bff; color: white; border-color: #007bff; }
+
+        .page-info { font-size: 11px; color: #666; margin: 0 10px; }
+
+        
+
+        .controls-container {
+
+            position: absolute; top: 10px; left: 10px; z-index: 1000;
+
+            background: white; padding: 5px; border-radius: 5px;
+
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+
+        }
+
+        .controls-toggle-bar { text-align: center; cursor: pointer; padding: 2px 0; font-size: 12px; font-weight: bold; }
+
+        .controls { display: flex; flex-direction: column; gap: 8px; padding: 5px; }
+
+        .controls.hidden { display: none; }
+
+
+
+        .map-controls, .search-controls { display: flex; gap: 5px; align-items: center; }
+
+        .search-input {
+
+            padding: 6px 10px; border: 1px solid #ddd; border-radius: 3px;
+
+            font-size: 13px; width: 150px;
+
+        }
+
+        .small-btn, .map-type-btn {
+
+            padding: 6px 10px; border: 1px solid #ddd; border-radius: 3px;
+
+            cursor: pointer; font-size: 12px;
+
+        }
+
+        .small-btn { background: #17a2b8; color: white; border-color: #17a2b8; }
+
+        .map-type-btn.active { background: #007bff; color: white; border-color: #007bff; }
+
+        .btn {
+
+            padding: 8px 12px; border: none; border-radius: 3px; cursor: pointer;
+
+            font-size: 13px; background: #007bff; color: white; flex: 1;
+
+        }
+
+        .btn-secondary { background: #6c757d; }
+
+        
+
+        .modal {
+
+            display: none; position: fixed; z-index: 5000; left: 0; top: 0;
+
+            width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
+
+            align-items: center; justify-content: center;
+
+        }
+
+        .modal-content {
+
+            background-color: white; margin: 5vh auto; padding: 20px; border-radius: 5px;
+
+            width: 95%; max-width: 450px; max-height: 90vh; overflow-y: auto;
+
+        }
+
+        .sub-modal .modal-content {
+
+             max-width: 350px; z-index: 5001;
+
+        }
+
+        .sub-modal .modal-content h4 { margin-bottom: 20px; }
+
+        
+
+        .form-group { margin-bottom: 12px; }
+
+        .form-group-header {
+
+            display: flex;
+
+            align-items: center;
+
+            margin-bottom: 5px;
+
+        }
+
+        .form-group-header .main-label {
+
+            flex-grow: 1;
+
+            font-size: 13px;
+
+            font-weight: bold;
+
+        }
+
+        .form-group-header .checkbox-label {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 4px;
+
+            font-size: 12px;
+
+            font-weight: normal;
+
+            cursor: pointer;
+
+            white-space: nowrap;
+
+            flex-shrink: 0;
+
+        }
+
+        
+
+        .form-group label { font-size: 13px; display: block; text-align: left; font-weight: bold; margin-bottom: 4px;}
+
+        .form-group input, .form-group select, .form-group textarea {
+
+            width: 100%; padding: 8px; border: 1px solid #ddd;
+
+            border-radius: 3px; font-size: 14px;
+
+        }
+
+        .form-row { display: flex; gap: 10px; align-items: flex-start; }
+
+        .form-row .form-group { flex: 1; margin-bottom: 12px; }
+
+        .form-row .form-group .form-row { margin-bottom: 0; }
+
+        .form-row > span { padding: 0 5px; }
+
+
+
+        .defect-group {
+
+            display: flex; justify-content: space-around; background: #f8f9fa;
+
+            padding: 10px; border-radius: 4px; border: 1px solid #e9ecef;
+
+        }
+
+        .defect-group label { font-weight: normal; font-size: 12px; display: flex; align-items: center; gap: 4px; cursor:pointer;}
+
+        .defect-group input { width: auto; }
+
+        
+
+        .sub-modal .form-group { display: flex; align-items: center; gap: 8px; margin-bottom: 15px;}
+
+        .sub-modal .form-group:last-child { margin-bottom: 0; }
+
+        .sub-modal .form-group label { margin-bottom: 0; flex:1; font-weight: normal;}
+
+        .sub-modal .form-group input[type="checkbox"] { width: auto; transform: scale(1.2); flex-shrink: 0; }
+
+        .sub-modal textarea { height: 60px; }
+
+
+
+        .filters {
+
+            padding: 10px; background: #f8f9fa; border-bottom: 1px solid #e9ecef;
+
+            display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+
+        }
+
+        .filter-group {
+
+            display: flex; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 5px;
+
+            gap: 4px 8px; align-items: center; font-size: 11px; width: 100%;
+
+        }
+
+        .filter-group .filter-title { font-weight: bold; font-size: 12px; margin-right: 5px; white-space: nowrap; }
+
+        .filter-group label {
+
+            display: flex; align-items: center; gap: 3px; cursor: pointer;
+
+            padding: 2px 4px; border-radius: 3px; transition: background-color 0.2s; white-space: nowrap;
+
+        }
+
+        .filter-group label:hover { background-color: #e9ecef; }
+
+        .filter-group input[type="checkbox"] { margin: 0; transform: scale(0.9); }
+
+        .filters #sortFilter { font-size: 12px; padding: 4px; }
+
+        
+
+        .color-selector { display: flex; gap: 5px; margin: 10px 0; }
+
+        .color-option {
+
+            width: 30px; height: 30px; border-radius: 50%;
+
+            cursor: pointer; border: 3px solid transparent; transition: all 0.2s;
+
+        }
+
+        .color-option.active { border-color: #333; }
+
+        .mobile-title { color: white; font-weight: bold; font-size: 16px; }
+
+        .mobile-controls { display: none; }
+
+        .backdrop {
+
+            display: none; position: fixed; top: 0; left: 0; width: 100%;
+
+            height: 100%; background: rgba(0,0,0,0.4); z-index: 2900;
+
+        }
+
+        .search-type-selector { display: flex; gap: 10px; margin-bottom: 8px; font-size: 12px; }
+
+        .search-type-selector label { display: flex; align-items: center; gap: 4px; }
+
+        #coordSearchContainer { display: none; }
+
+        .coord-inputs { display: flex; gap: 5px; }
+
+        .coord-inputs input { width: 120px; }
+
+
+
+        .sidebar-toggle-btn {
+
+            position: absolute;
+
+            top: 50%;
+
+            transform: translateY(-50%);
+
+            z-index: 2500;
+
+            background-color: #2c3e50;
+
+            color: white;
+
+            border: 1px solid #fff;
+
+            width: 25px;
+
+            height: 50px;
+
+            border-radius: 0 5px 5px 0;
+
+            cursor: pointer;
+
+            font-size: 16px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            box-shadow: 1px 0 5px rgba(0,0,0,0.2);
+
+        }
+
+
+
+        #toggle-left-sidebar-desktop { left: 5px; }
+
+        #toggle-right-sidebar-desktop {
+
+            right: 5px;
+
+            border-radius: 5px 0 0 5px;
+
+        }
+
+
+
+        .sidebar.collapsed, .tree-sidebar.collapsed {
+
+            width: 0;
+
+            min-width: 0;
+
+            overflow: hidden;
+
+            border: none;
+
+            padding-left: 0;
+
+            padding-right: 0;
+
+        }
+
+        
+
+        .desktop-only { display: block; }
+
+
+
+        @media (max-width: 1024px) {
+
+            :root { --sidebar-width: 260px; --tree-sidebar-width: 280px; }
+
+            .sidebar {
+
+                position: fixed; top: 52px; left: 0; height: calc(100% - 52px);
+
+                transform: translateX(calc(var(--sidebar-width) * -1)); box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+
+            }
+
+            .tree-sidebar {
+
+                position: fixed; top: 52px; right: 0; height: calc(100% - 52px);
+
+                transform: translateX(var(--tree-sidebar-width));
+
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1); border-left: none;
+
+            }
+
+            .sidebar.visible, .tree-sidebar.visible { transform: translateX(0); }
+
+            .main-content { height: 100%; }
+
+            .controls-container { top: 62px; }
+
+            .mobile-controls {
+
+                position: fixed; top: 0; left: 0; width: 100%; display: flex;
+
+                justify-content: space-between; align-items: center; background: #2c3e50;
+
+                color: white; padding: 10px; z-index: 4000;
+
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2); height: 52px;
+
+            }
+
+            .mobile-btn {
+
+                background: none; border: 1px solid white; color: white;
+
+                padding: 8px 12px; border-radius: 4px; font-size: 13px;
+
+            }
+
+            .coord-inputs { flex-direction: column; }
+
+            .coord-inputs input { width: 100%; }
+
+            .tree-list .group-item { padding: 5px 8px; }
+
+            .tree-list .group-item .small-text { margin-top: 1px; }
+
+            .desktop-only { display: none; }
+
+        }
+
+    </style>
+
 </head>
+
 <body>
-    <div id="login-modal" class="modal" style="display: flex;">
-        <div class="modal-content" style="max-width: 350px; text-align: center;">
-            <h4>TREEMAP 로그인</h4>
-            <div class="form-group" style="margin-top: 15px;"><input type="email" id="loginEmail" placeholder="이메일" required></div>
-            <div class="form-group"><input type="password" id="loginPassword" placeholder="비밀번호" required></div>
-            <div style="margin-top: 15px; display: flex; gap: 10px;">
-                <button id="loginBtn" class="btn" style="flex: 1;">로그인</button>
-                <button id="openSignupModalBtn" class="btn btn-secondary" style="flex: 1;">회원가입</button>
-            </div>
-        </div>
-    </div>
 
-    <div id="signup-modal" class="modal">
-        <div class="modal-content" style="max-width: 350px;">
-            <h4 style="text-align: center;">회원가입</h4>
-            <form id="signupForm">
-                <div class="form-group" style="margin-top: 15px;"><label>이메일</label><input type="email" id="signupEmail" required></div>
-                <div class="form-group"><label>비밀번호</label><input type="password" id="signupPassword" required></div>
-                <div class="form-group"><label>비밀번호 확인</label><input type="password" id="signupPasswordConfirm" required></div>
-                <div style="margin-top: 20px; display: flex; gap: 10px;">
-                    <button type="button" id="cancelSignupBtn" class="btn btn-secondary">취소</button>
-                    <button type="submit" class="btn">가입하기</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    <div id="login-modal" class="modal" style="display: flex;">
 
-    <div class="mobile-controls">
-        <button id="toggleLeftSidebarBtn" class="mobile-btn">☰ 폴더</button>
-        <div class="mobile-title">HK-TREEMAP</div>
-        <button id="toggleRightSidebarBtn" class="mobile-btn">대상목 ☰</button>
-    </div>
-    <div class="backdrop" id="backdrop"></div>
+        <div class="modal-content" style="max-width: 350px; text-align: center;">
 
-    <div class="container" id="app-container" style="display: none;">
-        <div class="sidebar" id="left-sidebar">
-            <div class="sidebar-header">
-                <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">HK-TREEMAP</div>
-                <div id="user-status" style="font-size: 12px; color: #bdc3c7; min-height: 38px; line-height: 1.4;"></div>
-                <button id="logoutBtn" class="btn btn-secondary" style="display: none; width: 100%; margin-top: 8px; font-size: 12px; padding: 5px;">로그아웃</button>
-            </div>
-            <div class="sidebar-content"><div class="folder-list" id="folderList"></div></div>
-            <div class="sidebar-footer">
-                <div class="footer-buttons">
-                    <button id="createFolderBtn" class="btn btn-secondary">새 폴더 생성</button>
-                    <button id="createGroupBtn" class="btn">새 그룹 생성</button>
-                </div>
-                <div class="footer-buttons">
-                    <button id="exportDataBtn" class="btn" style="background: #28a745;">엑셀 내보내기</button>
-                    <input type="file" id="excelImport" accept=".xlsx,.xls" style="display: none;">
-                    <button id="importDataBtn" class="btn" style="background: #ffc107; color: #333;">엑셀 가져오기</button>
-                </div>
-            </div>
-        </div>
+            <h4>TREEMAP 로그인</h4>
 
-        <div class="main-content">
-            <button id="toggle-left-sidebar-desktop" class="sidebar-toggle-btn desktop-only">◀</button>
-            <button id="toggle-right-sidebar-desktop" class="sidebar-toggle-btn desktop-only">▶</button>
-            <div class="controls-container">
-                <div id="toggleControlsBtn" class="controls-toggle-bar">[ ▼ 검색창 숨기기 ]</div>
-                <div class="controls" id="controlsContent">
-                    <div class="map-controls">
-                        <button id="roadmapBtn" class="map-type-btn active">일반지도</button>
-                        <button id="satelliteBtn" class="map-type-btn">위성사진</button>
-                    </div>
-                    <div class="search-type-selector">
-                        <label><input type="radio" name="searchType" value="keyword" checked> 키워드/주소</label>
-                        <label><input type="radio" name="searchType" value="coord"> 위경도</label>
-                    </div>
-                    <div id="keywordSearchContainer">
-                        <div class="search-controls">
-                            <input type="text" class="search-input" id="searchInput" placeholder="장소, 주소 검색...">
-                            <button id="searchBtn" class="small-btn">검색</button>
-                        </div>
-                    </div>
-                    <div id="coordSearchContainer">
-                        <div class="coord-inputs">
-                            <input type="number" id="latInput" placeholder="위도 (Latitude)">
-                            <input type="number" id="lngInput" placeholder="경도 (Longitude)">
-                        </div>
-                        <button id="coordSearchBtn" class="small-btn" style="width: 100%; margin-top: 5px;">이동</button>
-                    </div>
-                    <button id="myLocationBtn" class="btn btn-secondary" style="font-size: 12px;">내 위치 보기</button>
-                </div>
-            </div>
-            <div id="map-action-overlay"></div>
-            <div id="map"></div>
-        </div>
+            <div class="form-group" style="margin-top: 15px;"><input type="email" id="loginEmail" placeholder="이메일" required></div>
 
-        <div class="tree-sidebar" id="right-sidebar">
-            <h3 id="rightSidebarTitle" style="padding: 15px 10px; background: #f1f3f5; border-bottom: 1px solid #e9ecef;">대상목 리스트</h3>
-            <div class="tree-section">
-                <div class="filters">
-                    <div id="colorFilterContainer" class="filter-group">
-                        <span class="filter-title">색상:</span>
-                        <label><input type="checkbox" name="color" value="all" checked> 전체</label>
-                        <label><input type="checkbox" name="color" value="green"> 초록</label>
-                        <label><input type="checkbox" name="color" value="blue"> 파랑</label>
-                        <label><input type="checkbox" name="color" value="orange"> 주황</label>
-                        <label><input type="checkbox" name="color" value="gray"> 회색</label>
-                        <label><input type="checkbox" name="color" value="red"> 빨강</label>
-                    </div>
-                    <div id="gradeFilterContainer" class="filter-group">
-                        <span class="filter-title">등급:</span>
-                        <label><input type="checkbox" name="grade" value="all" checked> 전체</label>
-                        <label><input type="checkbox" name="grade" value="1"> 1</label>
-                        <label><input type="checkbox" name="grade" value="2"> 2</label>
-                        <label><input type="checkbox" name="grade" value="3"> 3</label>
-                        <label><input type="checkbox" name="grade" value="4"> 4</label>
-                        <label><input type="checkbox" name="grade" value="5"> 5</label>
-                    </div>
-                    <div class="filter-group">
-                        <span class="filter-title">정렬:</span>
-                        <select id="sortFilter">
-                            <option value="number_asc">번호 오름차순</option>
-                            <option value="number_desc">번호 내림차순</option>
-                        </select>
-                    </div>
-                </div>
-                <div id="treeListInfo" style="padding: 8px 12px; font-size: 12px; color: #333; background: #f1f3f5; border-bottom: 1px solid #e9ecef;"></div>
-                <div class="tree-pagination" id="treePagination"></div>
-                <div class="tree-list" id="treeList"></div>
-            </div>
-        </div>
-    </div>
-    
-    <div id="folderModal" class="modal"><div class="modal-content">
-        <h4 id="folderModalTitle">새 폴더 생성</h4>
-        <form id="folderForm">
-            <div class="form-group"><label>폴더 이름</label><input type="text" id="folderName" required></div>
-            <div style="text-align: right; margin-top: 15px;">
-                <button type="button" class="btn btn-secondary" onclick="closeModalById('folderModal')">취소</button>
-                <button type="submit" class="btn">저장</button>
-            </div>
-        </form>
-    </div></div>
-    <div id="groupModal" class="modal"><div class="modal-content">
-        <h4 id="groupModalTitle">새 그룹 생성</h4>
-        <form id="groupForm">
-            <div class="form-group"><label>소속 폴더</label><select id="groupFolderSelect" required></select></div>
-            <div class="form-group"><label>그룹 이름</label><input type="text" id="groupName" required></div>
-            <div style="text-align: right; margin-top: 15px; display: flex; gap: 5px;">
-                <button type="button" id="groupModalDeleteBtn" class="btn" style="background: #dc3545; margin-right: auto; display: none;">삭제</button>
-                <button type="button" class="btn btn-secondary" onclick="closeModalById('groupModal')">취소</button>
-                <button type="submit" class="btn">저장</button>
-            </div>
-        </form>
-    </div></div>
+            <div class="form-group"><input type="password" id="loginPassword" placeholder="비밀번호" required></div>
 
-    <div id="treeModal" class="modal"><div class="modal-content">
-        <h4 id="treeModalTitle">수목 정보 입력</h4>
-        <form id="treeForm">
-            <div class="form-row">
-                <div class="form-group"><label>번호</label><input type="text" id="treeNumber" required></div>
-                <div class="form-group"><label>수종</label><input type="text" id="treeSpecies"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>흉고(cm)</label><input type="text" id="treeDiameter"></div>
-                <div class="form-group"><label>수고(m)</label><input type="text" id="treeHeight"></div>
-            </div>
-            <div class="form-row">
-                 <div class="form-group"><label>수관폭(m)</label><div class="form-row" style="gap: 5px; margin-bottom: 0;"><input type="text" id="treeCrownWidth1" placeholder="가로"><span>x</span><input type="text" id="treeCrownWidth2" placeholder="세로"></div></div>
-                 <div class="form-group"><label>지하고(m)</label><input type="text" id="treeClearanceHeight"></div>
-            </div>
-            <div class="form-group">
-                <div class="form-group-header">
-                    <span class="main-label">줄기기울기</span>
-                    <label class="checkbox-label"><input type="checkbox" id="stemTiltNormalCheck">이상없음</label>
-                </div>
-                <div class="form-row">
-                    <select id="stemTiltDirection"><option value="">방향</option><option value="정상">정상</option><option value="차">차</option><option value="인">인</option><option value="진">진</option><option value="역">역</option></select>
-                    <select id="stemTiltForm"><option value="">형태</option><option value="정상">정상</option><option value="만곡">만곡</option><option value="선">선</option><option value="활">활</option></select>
-                    <input type="text" id="stemTiltAngle" placeholder="각도(°)">
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="form-group-header">
-                    <span class="main-label">결함 및 피해대상</span>
-                    <label class="checkbox-label"><input type="checkbox" id="defectNormalCheck">이상없음</label>
-                </div>
-                <div class="defect-group">
-                    <label><input type="checkbox" id="stemDefectCheck">줄기부 결함</label>
-                    <label><input type="checkbox" id="rootDefectCheck">뿌리부 결함</label>
-                    <label><input type="checkbox" id="targetCheck">피해대상물</label>
-                </div>
-            </div>
-            <div class="form-group"><label>등급</label><input type="text" id="treeGrade"></div>
-            <div class="form-group"><label>비고</label><textarea id="treeNotes" rows="2"></textarea></div>
-            <div class="form-group"><label>색상 선택</label><div class="color-selector">
-                <div class="color-option active" style="background: #2ed573;" data-color="green"></div>
-                <div class="color-option" style="background: #3742fa;" data-color="blue"></div>
-                <div class="color-option" style="background: #ffa502;" data-color="orange"></div>
-                <div class="color-option" style="background: #a4b0be;" data-color="gray"></div>
-                <div class="color-option" style="background: #ff4757;" data-color="red"></div>
-            </div></div>
-            <div style="margin-top: 15px; display: flex; flex-wrap: wrap; gap: 5px;">
-                <button type="button" id="modalDeleteBtn" class="btn" style="background: #dc3545; margin-right: auto; display: none;">삭제</button>
-                <button type="button" id="modalModifyLocationBtn" class="btn btn-secondary" style="background: #ffc107; color: #333; display: none;">위치 수정</button>
-                <button type="button" id="modalCopyBtn" class="btn btn-secondary" style="background: #17a2b8; display: none;">복사하기</button>
-                <div style="flex-basis: 100%; height: 0;"></div>
-                <button type="button" class="btn btn-secondary" onclick="closeModalById('treeModal')">취소</button>
-                <button type="submit" class="btn">저장</button>
-            </div>
-        </form>
-    </div></div>
-    
-    <div id="stemDefectModal" class="modal sub-modal"><div class="modal-content">
-        <h4>줄기부 결함 상세</h4>
-        <div class="form-group"><input type="checkbox" id="stemDefect_crack"><label for="stemDefect_crack">균열, 부후, 공동</label></div>
-        <div class="form-group"><input type="checkbox" id="stemDefect_dieback"><label for="stemDefect_dieback">가지고사</label></div>
-        <div class="form-group"><input type="checkbox" id="stemDefect_tear"><label for="stemDefect_tear">가지찢어짐</label></div>
-        <div class="form-group" style="flex-direction: column; align-items: flex-start;"><label>비고</label><textarea id="stemDefect_notes"></textarea></div>
-        <div style="text-align: right; margin-top: 15px;"><button type="button" class="btn" onclick="closeModalById('stemDefectModal')">확인</button></div>
-    </div></div>
-    <div id="rootDefectModal" class="modal sub-modal"><div class="modal-content">
-        <h4>뿌리부 결함 상세</h4>
-        <div class="form-group"><input type="checkbox" id="rootDefect_crack"><label for="rootDefect_crack">균열, 부후, 공동</label></div>
-        <div class="form-group"><input type="checkbox" id="rootDefect_cut"><label for="rootDefect_cut">뿌리절단</label></div>
-        <div class="form-group"><input type="checkbox" id="rootDefect_girdle"><label for="rootDefect_girdle">뿌리조임, 병목</label></div>
-        <div class="form-group" style="flex-direction: column; align-items: flex-start;"><label>비고</label><textarea id="rootDefect_notes"></textarea></div>
-        <div style="text-align: right; margin-top: 15px;"><button type="button" class="btn" onclick="closeModalById('rootDefectModal')">확인</button></div>
-    </div></div>
-    <div id="targetModal" class="modal sub-modal"><div class="modal-content">
-        <h4>피해대상물 상세</h4>
-        <div class="form-group"><input type="checkbox" id="target_present"><label for="target_present">존재</label></div>
-        <div class="form-group"><input type="checkbox" id="target_absent"><label for="target_absent">부존재</label></div>
-        <div class="form-group" style="flex-direction: column; align-items: flex-start;"><label>비고</label><textarea id="target_notes"></textarea></div>
-        <div style="text-align: right; margin-top: 15px;"><button type="button" class="btn" onclick="closeModalById('targetModal')">확인</button></div>
-    </div></div>
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
 
-    <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyBw6TBu2uPgSBW2_E_PUIs-uI_MZVs2hlA",
-        authDomain: "treemap-46453.firebaseapp.com",
-        projectId: "treemap-46453",
-        storageBucket: "treemap-46453.appspot.com",
-        messagingSenderId: "629734840216",
-        appId: "1:629734840216:web:8dbe1e33662fe844eefded"
-    };
+                <button id="loginBtn" class="btn" style="flex: 1;">로그인</button>
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    let currentUser = null;
+                <button id="openSignupModalBtn" class="btn btn-secondary" style="flex: 1;">회원가입</button>
 
-    let map; let selectedColor = 'green'; let currentGroup = null; let folders = []; let groups = [];
-    let trees = []; let currentTreeId = null; let currentClickPosition = null; let markers = [];
-    let geocoder; let currentFolderId = null; let currentGroupId = null; let currentTreePage = 1;
-    let treesPerPage = 20; let myLocationMarker = null;
-    const colorMap = { red: '#ff4757', green: '#2ed573', blue: '#3742fa', orange: '#ffa502', gray: '#a4b0be' };
-    const validColors = Object.keys(colorMap);
-    
-    let currentAction = null; 
-    let actionData = null; 
+            </div>
 
-    document.addEventListener('DOMContentLoaded', function() {
-        kakao.maps.load(initMap);
-        setupEventListeners();
-        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-            .then(() => {
-                auth.onAuthStateChanged(user => {
-                    if (user) {
-                        currentUser = user;
-                        document.getElementById('login-modal').style.display = 'none';
-                        document.getElementById('signup-modal').style.display = 'none';
-                        document.getElementById('app-container').style.display = 'flex';
-                        document.getElementById('user-status').innerHTML = `<span style="font-size: 11px;">로그인 계정:</span><br><strong>${currentUser.email}</strong>`;
-                        document.getElementById('logoutBtn').style.display = 'block';
-                        setTimeout(() => { if (map) map.relayout(); }, 100);
-                        loadUserData();
-                    } else {
-                        currentUser = null;
-                        document.getElementById('login-modal').style.display = 'flex';
-                        document.getElementById('app-container').style.display = 'none';
-                        document.getElementById('user-status').textContent = '로그인이 필요합니다.';
-                        document.getElementById('logoutBtn').style.display = 'none';
-                        folders = []; groups = []; trees = []; currentGroup = null;
-                        updateFolderList(); updateTreeList(); updateMapMarkers();
-                    }
-                });
-            })
-            .catch(error => { console.error("Auth persistence error:", error); });
-    });
+        </div>
 
-    function setupEventListeners() {
-        document.getElementById('loginBtn').addEventListener('click', () => {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            if (!email || !password) return alert('이메일과 비밀번호를 입력해주세요.');
-            auth.signInWithEmailAndPassword(email, password).catch(error => {
-                console.error("로그인 오류 상세:", error);
-                let errorMessage = "로그인에 실패했습니다. 잠시 후 다시 시도해주세요.";
-                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.message.includes("INVALID_LOGIN_CREDENTIALS")) {
-                    errorMessage = "이메일 또는 비밀번호가 올바르지 않습니다.";
-                } else if (error.code === 'auth/invalid-email') {
-                    errorMessage = "올바른 이메일 형식이 아닙니다.";
-                }
-                alert(errorMessage);
-            });
-        });
-        document.getElementById('openSignupModalBtn').addEventListener('click', () => { document.getElementById('signup-modal').style.display = 'flex'; });
-        document.getElementById('cancelSignupBtn').addEventListener('click', () => { document.getElementById('signup-modal').style.display = 'none'; });
-        document.getElementById('signupForm').addEventListener('submit', (e) => { e.preventDefault(); const email = document.getElementById('signupEmail').value; const password = document.getElementById('signupPassword').value; const passwordConfirm = document.getElementById('signupPasswordConfirm').value; if (password.length < 6) return alert('비밀번호는 6자리 이상이어야 합니다.'); if (password !== passwordConfirm) return alert('비밀번호가 일치하지 않습니다.'); auth.createUserWithEmailAndPassword(email, password).then(() => alert('회원가입 성공! 자동으로 로그인됩니다.')).catch(error => alert(`회원가입 실패: ${error.message}`)); });
-        document.getElementById('logoutBtn').addEventListener('click', () => { if (confirm('로그아웃 하시겠습니까?')) auth.signOut(); });
-        document.getElementById('toggle-left-sidebar-desktop').addEventListener('click', toggleLeftSidebarDesktop);
-        document.getElementById('toggle-right-sidebar-desktop').addEventListener('click', toggleRightSidebarDesktop);
-        const leftSidebar = document.getElementById('left-sidebar'); const rightSidebar = document.getElementById('right-sidebar'); const backdrop = document.getElementById('backdrop');
-        const toggleAndRelayout = (sidebar) => {
-            sidebar.classList.toggle('visible');
-            const isAnySidebarVisible = leftSidebar.classList.contains('visible') || rightSidebar.classList.contains('visible');
-            backdrop.style.display = isAnySidebarVisible ? 'block' : 'none';
-            setTimeout(() => map && map.relayout(), 310);
-        };
-        document.getElementById('toggleLeftSidebarBtn').addEventListener('click', () => toggleAndRelayout(leftSidebar));
-        document.getElementById('toggleRightSidebarBtn').addEventListener('click', () => toggleAndRelayout(rightSidebar));
-        backdrop.addEventListener('click', () => {
-            leftSidebar.classList.remove('visible');
-            rightSidebar.classList.remove('visible');
-            backdrop.style.display = 'none';
-            setTimeout(() => map && map.relayout(), 310);
-        });
-        document.getElementById('toggleControlsBtn').addEventListener('click', toggleControls);
-        document.getElementById('roadmapBtn').addEventListener('click', () => changeMapType('ROADMAP'));
-        document.getElementById('satelliteBtn').addEventListener('click', () => changeMapType('HYBRID'));
-        document.getElementById('searchBtn').addEventListener('click', searchLocation);
-        document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') searchLocation(); });
-        document.getElementById('coordSearchBtn').addEventListener('click', searchByCoords);
-        document.querySelectorAll('input[name="searchType"]').forEach(radio => radio.addEventListener('change', toggleSearchType));
-        document.getElementById('myLocationBtn').addEventListener('click', showMyLocation);
-        document.getElementById('createFolderBtn').addEventListener('click', () => openFolderModal());
-        document.getElementById('createGroupBtn').addEventListener('click', () => { if(folders.length === 0) alert('먼저 폴더를 생성해주세요.'); else openGroupModal(); });
-        document.getElementById('exportDataBtn').addEventListener('click', exportData);
-        document.getElementById('importDataBtn').addEventListener('click', () => document.getElementById('excelImport').click());
-        document.getElementById('excelImport').addEventListener('change', importData);
-        document.getElementById('folderForm').addEventListener('submit', handleFolderFormSubmit);
-        document.getElementById('groupForm').addEventListener('submit', handleGroupFormSubmit);
-        document.getElementById('treeForm').addEventListener('submit', handleTreeFormSubmit);
-        setupCheckboxFilter('colorFilterContainer');
-        setupCheckboxFilter('gradeFilterContainer');
-        document.getElementById('sortFilter').addEventListener('change', filterAndSortTrees);
-        document.querySelectorAll('#treeModal .color-option').forEach(el => el.addEventListener('click', () => selectModalColor(el, el.dataset.color)));
-        document.getElementById('stemDefectCheck').addEventListener('change', e => { if(e.target.checked) openModalById('stemDefectModal'); });
-        document.getElementById('rootDefectCheck').addEventListener('change', e => { if(e.target.checked) openModalById('rootDefectModal'); });
-        document.getElementById('targetCheck').addEventListener('change', e => { if(e.target.checked) openModalById('targetModal'); });
-        document.getElementById('stemTiltNormalCheck').addEventListener('change', handleStemTiltNormalCheck);
-        document.getElementById('defectNormalCheck').addEventListener('change', handleDefectNormalCheck);
-        window.addEventListener('click', (event) => { if (event.target.classList.contains('modal')) event.target.style.display = 'none'; });
-        window.addEventListener('resize', () => map && map.relayout());
-        
-        document.getElementById('modalModifyLocationBtn').addEventListener('click', startModifyLocation);
-        document.getElementById('modalCopyBtn').addEventListener('click', startCopyTree);
-        document.addEventListener('keydown', (e) => {
-            if (e.key === "Escape" && currentAction) {
-                cancelCurrentAction();
-            }
-        });
-    }
+    </div>
 
-    function showActionOverlay(message) {
-        const overlay = document.getElementById('map-action-overlay');
-        overlay.innerHTML = `${message} <button onclick="cancelCurrentAction()">취소</button>`;
-        overlay.style.display = 'block';
-        if (map) map.getContainer().style.cursor = 'crosshair';
-    }
 
-    function cancelCurrentAction() {
-        document.getElementById('map-action-overlay').style.display = 'none';
-        if (map) map.getContainer().style.cursor = '';
-        currentAction = null;
-        actionData = null;
-    }
 
-    function startModifyLocation() {
-        const tree = trees.find(t => t.id === currentTreeId);
-        if (!tree) return;
-        currentAction = 'modify_location';
-        actionData = { treeId: tree.id };
-        closeModalById('treeModal');
-        showActionOverlay(`'${tree.number}'번 수목의 새 위치를 선택하세요... (ESC로 취소)`);
-    }
+    <div id="signup-modal" class="modal">
 
-    function startCopyTree() {
-        const tree = trees.find(t => t.id === currentTreeId);
-        if (!tree) return;
-        currentAction = 'copy_tree';
-        const { id, lat, lng, createdAt, ...treeDataToCopy } = tree;
-        actionData = { treeData: treeDataToCopy };
-        closeModalById('treeModal');
-        showActionOverlay(`'${tree.number}'번 수목을 복사할 새 위치를 선택하세요... (ESC로 취소)`);
-    }
+        <div class="modal-content" style="max-width: 350px;">
 
-    async function handleMapActionClick(mouseEvent) {
-        if (!currentAction) return;
-        const latlng = mouseEvent.latLng;
-        const newPosition = { lat: latlng.getLat(), lng: latlng.getLng() };
-        try {
-            if (currentAction === 'modify_location') {
-                await db.collection('users').doc(currentUser.uid).collection('trees').doc(actionData.treeId)
-                    .update({ lat: newPosition.lat, lng: newPosition.lng });
-                alert('위치가 수정되었습니다.');
-                await loadUserData();
-            } 
-            else if (currentAction === 'copy_tree') {
-                const newTreeData = { ...actionData.treeData, ...newPosition, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
-                const docRef = await db.collection('users').doc(currentUser.uid).collection('trees').add(newTreeData);
-                await loadUserData(); 
-                openTreeModal(docRef.id); 
-            }
-        } catch(error) {
-            console.error("작업 실패:", error);
-            alert("작업에 실패했습니다.");
-        } finally {
-            cancelCurrentAction();
-        }
-    }
+            <h4 style="text-align: center;">회원가입</h4>
 
-    function initMap() {
-        const container = document.getElementById('map');
-        const options = {
-            center: new kakao.maps.LatLng(37.5665, 126.9780),
-            level: 3,
-            draggable: true,
-            scrollwheel: true
-        };
-        map = new kakao.maps.Map(container, options);
-        geocoder = new kakao.maps.services.Geocoder();
-        kakao.maps.event.addListener(map, 'click', handleMapActionClick);
-        kakao.maps.event.addListener(map, 'rightclick', (e) => {
-            if(currentAction) return;
-            addNewTreeAt(e.latLng);
-        });
-        addLongPressListener(container, (e) => {
-            if(currentAction) return;
-            const touch = e.touches[0];
-            const rect = container.getBoundingClientRect();
-            addNewTreeAt(map.getProjection().coordsFromContainerPoint(new kakao.maps.Point(touch.clientX - rect.left, touch.clientY - rect.top)));
-        });
-        container.addEventListener('contextmenu', e => e.preventDefault());
-        updateMapMarkers();
-    }
-    
-    function updateMapMarkers() {
-        if (!map) return;
-        markers.forEach(marker => marker.setMap(null));
-        markers = [];
-        const selectedColors = getSelectedFilterValues('colorFilterContainer');
-        const selectedGrades = getSelectedFilterValues('gradeFilterContainer');
-        const visibleTrees = trees.filter(tree => {
-            const group = groups.find(g => g.id === tree.groupId);
-            if (!group || !group.visible) return false;
-            const colorMatch = selectedColors.length === 0 || selectedColors.includes(tree.color);
-            const gradeStr = String(tree.grade);
-            const gradeMatch = selectedGrades.length === 0 || selectedGrades.includes(gradeStr);
-            return colorMatch && gradeMatch;
-        });
-        visibleTrees.forEach(tree => {
-            if (typeof tree.lat !== 'number' || typeof tree.lng !== 'number') return;
-            const position = new kakao.maps.LatLng(tree.lat, tree.lng);
-            const text = tree.number || '';
-            let textWidth = 0;
-            for (let i = 0; i < text.length; i++) {
-                const char = text.charCodeAt(i);
-                textWidth += (char >= 0xAC00 && char <= 0xD7A3) ? 7.5 : 4;
-            }
-            const padding = 10;
-            const svgWidth = Math.max(15, textWidth + padding);
-            const svgHeight = 19, rectHeight = 13, rectRadius = 7, pointerWidth = 4, fontSize = 8, textY = 11;
-            const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}"><rect x="1" y="1" width="${svgWidth - 2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/><path d="M ${svgWidth/2 - pointerWidth} ${rectHeight} L ${svgWidth/2} ${svgHeight} L ${svgWidth/2 + pointerWidth} ${rectHeight} Z" fill="${colorMap[tree.color] || colorMap.gray}"/><text x="${svgWidth/2}" y="${textY}" font-size="${fontSize}" font-weight="bold" text-anchor="middle" fill="white">${text}</text></svg>`;
-            const imageSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
-            const imageSize = new kakao.maps.Size(svgWidth, svgHeight);
-            const imageOption = { offset: new kakao.maps.Point(svgWidth / 2, svgHeight) };
-            const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
-            const marker = new kakao.maps.Marker({ position, image: markerImage });
-            marker.setMap(map);
-            markers.push(marker);
-            kakao.maps.event.addListener(marker, 'click', () => editTree(tree.id));
-            kakao.maps.event.addListener(marker, 'rightclick', () => deleteTree(tree.id));
-        });
-    }
+            <form id="signupForm">
 
-    // (이하 모든 함수는 생략 없이 모두 존재합니다. 전체를 복사해서 사용하세요)
-    // ... toggleControls, handle...Check, openModalById, closeModalById, handleTreeFormSubmit ...
-    // ... exportData, importData, loadUserData, ...
-    </script>
+                <div class="form-group" style="margin-top: 15px;"><label>이메일</label><input type="email" id="signupEmail" required></div>
+
+                <div class="form-group"><label>비밀번호</label><input type="password" id="signupPassword" required></div>
+
+                <div class="form-group"><label>비밀번호 확인</label><input type="password" id="signupPasswordConfirm" required></div>
+
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+
+                    <button type="button" id="cancelSignupBtn" class="btn btn-secondary">취소</button>
+
+                    <button type="submit" class="btn">가입하기</button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="mobile-controls">
+
+        <button id="toggleLeftSidebarBtn" class="mobile-btn">☰ 폴더</button>
+
+        <div class="mobile-title">HK-TREEMAP</div>
+
+        <button id="toggleRightSidebarBtn" class="mobile-btn">대상목 ☰</button>
+
+    </div>
+
+    <div class="backdrop" id="backdrop"></div>
+
+
+
+    <div class="container" id="app-container" style="display: none;">
+
+        <div class="sidebar" id="left-sidebar">
+
+            <div class="sidebar-header">
+
+                <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">HK-TREEMAP</div>
+
+                <div id="user-status" style="font-size: 12px; color: #bdc3c7; min-height: 38px; line-height: 1.4;"></div>
+
+                <button id="logoutBtn" class="btn btn-secondary" style="display: none; width: 100%; margin-top: 8px; font-size: 12px; padding: 5px;">로그아웃</button>
+
+            </div>
+
+            <div class="sidebar-content"><div class="folder-list" id="folderList"></div></div>
+
+            <div class="sidebar-footer">
+
+                <div class="footer-buttons">
+
+                    <button id="createFolderBtn" class="btn btn-secondary">새 폴더 생성</button>
+
+                    <button id="createGroupBtn" class="btn">새 그룹 생성</button>
+
+                </div>
+
+                <div class="footer-buttons">
+
+                    <button id="exportDataBtn" class="btn" style="background: #28a745;">엑셀 내보내기</button>
+
+                    <input type="file" id="excelImport" accept=".xlsx,.xls" style="display: none;">
+
+                    <button id="importDataBtn" class="btn" style="background: #ffc107; color: #333;">엑셀 가져오기</button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="main-content">
+
+            <button id="toggle-left-sidebar-desktop" class="sidebar-toggle-btn desktop-only">◀</button>
+
+            <button id="toggle-right-sidebar-desktop" class="sidebar-toggle-btn desktop-only">▶</button>
+
+            <div class="controls-container">
+
+                <div id="toggleControlsBtn" class="controls-toggle-bar">[ ▼ 검색창 숨기기 ]</div>
+
+                <div class="controls" id="controlsContent">
+
+                    <div class="map-controls">
+
+                        <button id="roadmapBtn" class="map-type-btn active">일반지도</button>
+
+                        <button id="satelliteBtn" class="map-type-btn">위성사진</button>
+
+                    </div>
+
+                    <div class="search-type-selector">
+
+                        <label><input type="radio" name="searchType" value="keyword" checked> 키워드/주소</label>
+
+                        <label><input type="radio" name="searchType" value="coord"> 위경도</label>
+
+                    </div>
+
+                    <div id="keywordSearchContainer">
+
+                        <div class="search-controls">
+
+                            <input type="text" class="search-input" id="searchInput" placeholder="장소, 주소 검색...">
+
+                            <button id="searchBtn" class="small-btn">검색</button>
+
+                        </div>
+
+                    </div>
+
+                    <div id="coordSearchContainer">
+
+                        <div class="coord-inputs">
+
+                            <input type="number" id="latInput" placeholder="위도 (Latitude)">
+
+                            <input type="number" id="lngInput" placeholder="경도 (Longitude)">
+
+                        </div>
+
+                        <button id="coordSearchBtn" class="small-btn" style="width: 100%; margin-top: 5px;">이동</button>
+
+                    </div>
+
+                    <button id="myLocationBtn" class="btn btn-secondary" style="font-size: 12px;">내 위치 보기</button>
+
+                </div>
+
+            </div>
+
+            <div id="map"></div>
+
+        </div>
+
+
+
+        <div class="tree-sidebar" id="right-sidebar">
+
+            <h3 id="rightSidebarTitle" style="padding: 15px 10px; background: #f1f3f5; border-bottom: 1px solid #e9ecef;">대상목 리스트</h3>
+
+            <div class="tree-section">
+
+                <div class="filters">
+
+                    <div id="colorFilterContainer" class="filter-group">
+
+                        <span class="filter-title">색상:</span>
+
+                        <label><input type="checkbox" name="color" value="all" checked> 전체</label>
+
+                        <label><input type="checkbox" name="color" value="green"> 초록</label>
+
+                        <label><input type="checkbox" name="color" value="blue"> 파랑</label>
+
+                        <label><input type="checkbox" name="color" value="orange"> 주황</label>
+
+                        <label><input type="checkbox" name="color" value="gray"> 회색</label>
+
+                        <label><input type="checkbox" name="color" value="red"> 빨강</label>
+
+                    </div>
+
+                    <div id="gradeFilterContainer" class="filter-group">
+
+                        <span class="filter-title">등급:</span>
+
+                        <label><input type="checkbox" name="grade" value="all" checked> 전체</label>
+
+                        <label><input type="checkbox" name="grade" value="1"> 1</label>
+
+                        <label><input type="checkbox" name="grade" value="2"> 2</label>
+
+                        <label><input type="checkbox" name="grade" value="3"> 3</label>
+
+                        <label><input type="checkbox" name="grade" value="4"> 4</label>
+
+                        <label><input type="checkbox" name="grade" value="5"> 5</label>
+
+                    </div>
+
+                    <div class="filter-group">
+
+                        <span class="filter-title">정렬:</span>
+
+                        <select id="sortFilter">
+
+                            <option value="number_asc">번호 오름차순</option>
+
+                            <option value="number_desc">번호 내림차순</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <div id="treeListInfo" style="padding: 8px 12px; font-size: 12px; color: #333; background: #f1f3f5; border-bottom: 1px solid #e9ecef;"></div>
+
+                <div class="tree-pagination" id="treePagination"></div>
+
+                <div class="tree-list" id="treeList"></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    
+
+    <div id="folderModal" class="modal"><div class="modal-content">
+
+        <h4 id="folderModalTitle">새 폴더 생성</h4>
+
+        <form id="folderForm">
+
+            <div class="form-group"><label>폴더 이름</label><input type="text" id="folderName" required></div>
+
+            <div style="text-align: right; margin-top: 15px;">
+
+                <button type="button" class="btn btn-secondary" onclick="closeModalById('folderModal')">취소</button>
+
+                <button type="submit" class="btn">저장</button>
+
+            </div>
+
+        </form>
+
+    </div></div>
+
+    <div id="groupModal" class="modal"><div class="modal-content">
+
+        <h4 id="groupModalTitle">새 그룹 생성</h4>
+
+        <form id="groupForm">
+
+            <div class="form-group"><label>소속 폴더</label><select id="groupFolderSelect" required></select></div>
+
+            <div class="form-group"><label>그룹 이름</label><input type="text" id="groupName" required></div>
+
+            <div style="text-align: right; margin-top: 15px; display: flex; gap: 5px;">
+
+                <button type="button" id="groupModalDeleteBtn" class="btn" style="background: #dc3545; margin-right: auto; display: none;">삭제</button>
+
+                <button type="button" class="btn btn-secondary" onclick="closeModalById('groupModal')">취소</button>
+
+                <button type="submit" class="btn">저장</button>
+
+            </div>
+
+        </form>
+
+    </div></div>
+
+    <div id="treeModal" class="modal"><div class="modal-content">
+
+        <h4 id="treeModalTitle">수목 정보 입력</h4>
+
+        <form id="treeForm">
+
+            <div class="form-row">
+
+                <div class="form-group"><label>번호</label><input type="text" id="treeNumber" required></div>
+
+                <div class="form-group"><label>수종</label><input type="text" id="treeSpecies"></div>
+
+            </div>
+
+            <div class="form-row">
+
+                <div class="form-group"><label>흉고(cm)</label><input type="text" id="treeDiameter"></div>
+
+                <div class="form-group"><label>수고(m)</label><input type="text" id="treeHeight"></div>
+
+            </div>
+
+            <div class="form-row">
+
+                 <div class="form-group"><label>수관폭(m)</label><div class="form-row" style="gap: 5px; margin-bottom: 0;"><input type="text" id="treeCrownWidth1" placeholder="가로"><span>x</span><input type="text" id="treeCrownWidth2" placeholder="세로"></div></div>
+
+                 <div class="form-group"><label>지하고(m)</label><input type="text" id="treeClearanceHeight"></div>
+
+            </div>
+
+            <div class="form-group">
+
+                <div class="form-group-header">
+
+                    <span class="main-label">줄기기울기</span>
+
+                    <label class="checkbox-label"><input type="checkbox" id="stemTiltNormalCheck">이상없음</label>
+
+                </div>
+
+                <div class="form-row">
+
+                    <select id="stemTiltDirection"><option value="">방향</option><option value="정상">정상</option><option value="차">차</option><option value="인">인</option><option value="진">진</option><option value="역">역</option></select>
+
+                    <select id="stemTiltForm"><option value="">형태</option><option value="정상">정상</option><option value="만곡">만곡</option><option value="선">선</option><option value="활">활</option></select>
+
+                    <input type="text" id="stemTiltAngle" placeholder="각도(°)">
+
+                </div>
+
+            </div>
+
+            <div class="form-group">
+
+                <div class="form-group-header">
+
+                    <span class="main-label">결함 및 피해대상</span>
+
+                    <label class="checkbox-label"><input type="checkbox" id="defectNormalCheck">이상없음</label>
+
+                </div>
+
+                <div class="defect-group">
+
+                    <label><input type="checkbox" id="stemDefectCheck">줄기부 결함</label>
+
+                    <label><input type="checkbox" id="rootDefectCheck">뿌리부 결함</label>
+
+                    <label><input type="checkbox" id="targetCheck">피해대상물</label>
+
+                </div>
+
+            </div>
+
+            <div class="form-group"><label>등급</label><input type="text" id="treeGrade"></div>
+
+            <div class="form-group"><label>비고</label><textarea id="treeNotes" rows="2"></textarea></div>
+
+            <div class="form-group"><label>색상 선택</label><div class="color-selector">
+
+                <div class="color-option active" style="background: #2ed573;" data-color="green"></div>
+
+                <div class="color-option" style="background: #3742fa;" data-color="blue"></div>
+
+                <div class="color-option" style="background: #ffa502;" data-color="orange"></div>
+
+                <div class="color-option" style="background: #a4b0be;" data-color="gray"></div>
+
+                <div class="color-option" style="background: #ff4757;" data-color="red"></div>
+
+            </div></div>
+
+            <div style="text-align: right; margin-top: 15px; display: flex; gap: 5px;">
+
+                <button type="button" id="modalDeleteBtn" class="btn" style="background: #dc3545; margin-right: auto; display: none;">삭제</button>
+
+                <button type="button" class="btn btn-secondary" onclick="closeModalById('treeModal')">취소</button>
+
+                <button type="submit" class="btn">저장</button>
+
+            </div>
+
+        </form>
+
+    </div></div>
+
+    <div id="stemDefectModal" class="modal sub-modal"><div class="modal-content">
+
+        <h4>줄기부 결함 상세</h4>
+
+        <div class="form-group"><input type="checkbox" id="stemDefect_crack"><label for="stemDefect_crack">균열, 부후, 공동</label></div>
+
+        <div class="form-group"><input type="checkbox" id="stemDefect_dieback"><label for="stemDefect_dieback">가지고사</label></div>
+
+        <div class="form-group"><input type="checkbox" id="stemDefect_tear"><label for="stemDefect_tear">가지찢어짐</label></div>
+
+        <div class="form-group" style="flex-direction: column; align-items: flex-start;"><label>비고</label><textarea id="stemDefect_notes"></textarea></div>
+
+        <div style="text-align: right; margin-top: 15px;"><button type="button" class="btn" onclick="closeModalById('stemDefectModal')">확인</button></div>
+
+    </div></div>
+
+    <div id="rootDefectModal" class="modal sub-modal"><div class="modal-content">
+
+        <h4>뿌리부 결함 상세</h4>
+
+        <div class="form-group"><input type="checkbox" id="rootDefect_crack"><label for="rootDefect_crack">균열, 부후, 공동</label></div>
+
+        <div class="form-group"><input type="checkbox" id="rootDefect_cut"><label for="rootDefect_cut">뿌리절단</label></div>
+
+        <div class="form-group"><input type="checkbox" id="rootDefect_girdle"><label for="rootDefect_girdle">뿌리조임, 병목</label></div>
+
+        <div class="form-group" style="flex-direction: column; align-items: flex-start;"><label>비고</label><textarea id="rootDefect_notes"></textarea></div>
+
+        <div style="text-align: right; margin-top: 15px;"><button type="button" class="btn" onclick="closeModalById('rootDefectModal')">확인</button></div>
+
+    </div></div>
+
+    <div id="targetModal" class="modal sub-modal"><div class="modal-content">
+
+        <h4>피해대상물 상세</h4>
+
+        <div class="form-group"><input type="checkbox" id="target_present"><label for="target_present">존재</label></div>
+
+        <div class="form-group"><input type="checkbox" id="target_absent"><label for="target_absent">부존재</label></div>
+
+        <div class="form-group" style="flex-direction: column; align-items: flex-start;"><label>비고</label><textarea id="target_notes"></textarea></div>
+
+        <div style="text-align: right; margin-top: 15px;"><button type="button" class="btn" onclick="closeModalById('targetModal')">확인</button></div>
+
+    </div></div>
+
+
+
+    <script>
+
+    const firebaseConfig = {
+
+        apiKey: "AIzaSyBw6TBu2uPgSBW2_E_PUIs-uI_MZVs2hlA",
+
+        authDomain: "treemap-46453.firebaseapp.com",
+
+        projectId: "treemap-46453",
+
+        storageBucket: "treemap-46453.appspot.com",
+
+        messagingSenderId: "629734840216",
+
+        appId: "1:629734840216:web:8dbe1e33662fe844eefded"
+
+    };
+
+
+
+    firebase.initializeApp(firebaseConfig);
+
+    const auth = firebase.auth();
+
+    const db = firebase.firestore();
+
+    let currentUser = null;
+
+
+
+    let map; let selectedColor = 'green'; let currentGroup = null; let folders = []; let groups = [];
+
+    let trees = []; let currentTreeId = null; let currentClickPosition = null; let markers = [];
+
+    let geocoder; let currentFolderId = null; let currentGroupId = null; let currentTreePage = 1;
+
+    let treesPerPage = 20; let myLocationMarker = null;
+
+    const colorMap = { red: '#ff4757', green: '#2ed573', blue: '#3742fa', orange: '#ffa502', gray: '#a4b0be' };
+
+    const validColors = Object.keys(colorMap);
+
+
+
+    document.addEventListener('DOMContentLoaded', function() {
+
+        kakao.maps.load(initMap);
+
+        setupEventListeners();
+
+
+
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+
+            .then(() => {
+
+                auth.onAuthStateChanged(user => {
+
+                    if (user) {
+
+                        currentUser = user;
+
+                        document.getElementById('login-modal').style.display = 'none';
+
+                        document.getElementById('signup-modal').style.display = 'none';
+
+                        document.getElementById('app-container').style.display = 'flex';
+
+                        document.getElementById('user-status').innerHTML = `<span style="font-size: 11px;">로그인 계정:</span><br><strong>${currentUser.email}</strong>`;
+
+                        document.getElementById('logoutBtn').style.display = 'block';
+
+                        setTimeout(() => { if (map) map.relayout(); }, 100);
+
+                        loadUserData();
+
+                    } else {
+
+                        currentUser = null;
+
+                        document.getElementById('login-modal').style.display = 'flex';
+
+                        document.getElementById('app-container').style.display = 'none';
+
+                        document.getElementById('user-status').textContent = '로그인이 필요합니다.';
+
+                        document.getElementById('logoutBtn').style.display = 'none';
+
+                        folders = []; groups = []; trees = []; currentGroup = null;
+
+                        updateFolderList(); updateTreeList(); updateMapMarkers();
+
+                    }
+
+                });
+
+            })
+
+            .catch(error => {
+
+                console.error("Auth persistence error:", error);
+
+            });
+
+    });
+
+
+
+    function setupEventListeners() {
+
+        document.getElementById('loginBtn').addEventListener('click', () => {
+
+            const email = document.getElementById('loginEmail').value;
+
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) return alert('이메일과 비밀번호를 입력해주세요.');
+
+            
+
+            auth.signInWithEmailAndPassword(email, password).catch(error => {
+
+                console.error("로그인 오류 상세:", error);
+
+                let errorMessage = "로그인에 실패했습니다. 잠시 후 다시 시도해주세요.";
+
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.message.includes("INVALID_LOGIN_CREDENTIALS")) {
+
+                    errorMessage = "이메일 또는 비밀번호가 올바르지 않습니다.";
+
+                } else if (error.code === 'auth/invalid-email') {
+
+                    errorMessage = "올바른 이메일 형식이 아닙니다.";
+
+                }
+
+                alert(errorMessage);
+
+            });
+
+        });
+
+
+
+        document.getElementById('openSignupModalBtn').addEventListener('click', () => { document.getElementById('signup-modal').style.display = 'flex'; });
+
+        document.getElementById('cancelSignupBtn').addEventListener('click', () => { document.getElementById('signup-modal').style.display = 'none'; });
+
+        document.getElementById('signupForm').addEventListener('submit', (e) => { e.preventDefault(); const email = document.getElementById('signupEmail').value; const password = document.getElementById('signupPassword').value; const passwordConfirm = document.getElementById('signupPasswordConfirm').value; if (password.length < 6) return alert('비밀번호는 6자리 이상이어야 합니다.'); if (password !== passwordConfirm) return alert('비밀번호가 일치하지 않습니다.'); auth.createUserWithEmailAndPassword(email, password).then(() => alert('회원가입 성공! 자동으로 로그인됩니다.')).catch(error => alert(`회원가입 실패: ${error.message}`)); });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => { if (confirm('로그아웃 하시겠습니까?')) auth.signOut(); });
+
+
+
+        document.getElementById('toggle-left-sidebar-desktop').addEventListener('click', toggleLeftSidebarDesktop);
+
+        document.getElementById('toggle-right-sidebar-desktop').addEventListener('click', toggleRightSidebarDesktop);
+
+
+
+        const leftSidebar = document.getElementById('left-sidebar'); const rightSidebar = document.getElementById('right-sidebar'); const backdrop = document.getElementById('backdrop');
+
+        
+
+        const toggleAndRelayout = (sidebar) => {
+
+            sidebar.classList.toggle('visible');
+
+            const isAnySidebarVisible = leftSidebar.classList.contains('visible') || rightSidebar.classList.contains('visible');
+
+            backdrop.style.display = isAnySidebarVisible ? 'block' : 'none';
+
+            setTimeout(() => map && map.relayout(), 310);
+
+        };
+
+        
+
+        document.getElementById('toggleLeftSidebarBtn').addEventListener('click', () => toggleAndRelayout(leftSidebar));
+
+        document.getElementById('toggleRightSidebarBtn').addEventListener('click', () => toggleAndRelayout(rightSidebar));
+
+        
+
+        backdrop.addEventListener('click', () => {
+
+            leftSidebar.classList.remove('visible');
+
+            rightSidebar.classList.remove('visible');
+
+            backdrop.style.display = 'none';
+
+            setTimeout(() => map && map.relayout(), 310);
+
+        });
+
+
+
+        document.getElementById('toggleControlsBtn').addEventListener('click', toggleControls);
+
+        document.getElementById('roadmapBtn').addEventListener('click', () => changeMapType('ROADMAP'));
+
+        document.getElementById('satelliteBtn').addEventListener('click', () => changeMapType('HYBRID'));
+
+        document.getElementById('searchBtn').addEventListener('click', searchLocation);
+
+        document.getElementById('searchInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') searchLocation(); });
+
+        document.getElementById('coordSearchBtn').addEventListener('click', searchByCoords);
+
+        document.querySelectorAll('input[name="searchType"]').forEach(radio => radio.addEventListener('change', toggleSearchType));
+
+        document.getElementById('myLocationBtn').addEventListener('click', showMyLocation);
+
+
+
+        document.getElementById('createFolderBtn').addEventListener('click', () => openFolderModal());
+
+        document.getElementById('createGroupBtn').addEventListener('click', () => { if(folders.length === 0) alert('먼저 폴더를 생성해주세요.'); else openGroupModal(); });
+
+        document.getElementById('exportDataBtn').addEventListener('click', exportData);
+
+        document.getElementById('importDataBtn').addEventListener('click', () => document.getElementById('excelImport').click());
+
+        document.getElementById('excelImport').addEventListener('change', importData);
+
+        
+
+        document.getElementById('folderForm').addEventListener('submit', handleFolderFormSubmit);
+
+        document.getElementById('groupForm').addEventListener('submit', handleGroupFormSubmit);
+
+        document.getElementById('treeForm').addEventListener('submit', handleTreeFormSubmit);
+
+        
+
+        setupCheckboxFilter('colorFilterContainer');
+
+        setupCheckboxFilter('gradeFilterContainer');
+
+        document.getElementById('sortFilter').addEventListener('change', filterAndSortTrees);
+
+        
+
+        document.querySelectorAll('#treeModal .color-option').forEach(el => el.addEventListener('click', () => selectModalColor(el, el.dataset.color)));
+
+        document.getElementById('stemDefectCheck').addEventListener('change', e => { if(e.target.checked) openModalById('stemDefectModal'); });
+
+        document.getElementById('rootDefectCheck').addEventListener('change', e => { if(e.target.checked) openModalById('rootDefectModal'); });
+
+        document.getElementById('targetCheck').addEventListener('change', e => { if(e.target.checked) openModalById('targetModal'); });
+
+        document.getElementById('stemTiltNormalCheck').addEventListener('change', handleStemTiltNormalCheck);
+
+        document.getElementById('defectNormalCheck').addEventListener('change', handleDefectNormalCheck);
+
+
+
+        window.addEventListener('click', (event) => { if (event.target.classList.contains('modal')) event.target.style.display = 'none'; });
+
+        window.addEventListener('resize', () => map && map.relayout());
+
+    }
+
+
+
+    function toggleControls() {
+
+        const content = document.getElementById('controlsContent');
+
+        const btn = document.getElementById('toggleControlsBtn');
+
+        content.classList.toggle('hidden');
+
+        btn.textContent = content.classList.contains('hidden') ? '[ ▲ 검색창 보이기 ]' : '[ ▼ 검색창 숨기기 ]';
+
+    }
+
+    
+
+    function handleStemTiltNormalCheck(e) {
+
+        const isChecked = e.target.checked;
+
+        const els = ['stemTiltDirection', 'stemTiltForm', 'stemTiltAngle'].map(id => document.getElementById(id));
+
+        if (isChecked) {
+
+            els[0].value = '정상'; els[1].value = '정상'; els[2].value = '0';
+
+        }
+
+        els.forEach(el => el.disabled = isChecked);
+
+    }
+
+    
+
+    function handleDefectNormalCheck(e) {
+
+        const isChecked = e.target.checked;
+
+        const mainCheckboxes = ['stemDefectCheck', 'rootDefectCheck', 'targetCheck'].map(id => document.getElementById(id));
+
+        
+
+        if (isChecked) {
+
+            mainCheckboxes.forEach(el => el.checked = false);
+
+            const subModalIds = ['stemDefectModal', 'rootDefectModal', 'targetModal'];
+
+            subModalIds.forEach(modalId => {
+
+                document.querySelectorAll(`#${modalId} input[type="checkbox"]`).forEach(subCb => {
+
+                    subCb.checked = false;
+
+                });
+
+            });
+
+        }
+
+        mainCheckboxes.forEach(el => el.disabled = isChecked);
+
+    }
+
+
+
+    function openModalById(modalId) { document.getElementById(modalId).style.display = 'flex'; }
+
+    function closeModalById(modalId) { document.getElementById(modalId).style.display = 'none'; }
+
+    
+
+    async function handleTreeFormSubmit(e) {
+
+        e.preventDefault();
+
+        if (!currentGroup && !currentTreeId) return alert('그룹을 먼저 선택해주세요.');
+
+        if (!currentUser) return;
+
+
+
+        const treeData = {
+
+            number: document.getElementById('treeNumber').value || '',
+
+            species: document.getElementById('treeSpecies').value || '',
+
+            diameter: document.getElementById('treeDiameter').value || '',
+
+            height: document.getElementById('treeHeight').value || '',
+
+            crownWidth1: document.getElementById('treeCrownWidth1').value || '',
+
+            crownWidth2: document.getElementById('treeCrownWidth2').value || '',
+
+            clearanceHeight: document.getElementById('treeClearanceHeight').value || '',
+
+            stemTiltDirection: document.getElementById('stemTiltDirection').value || '',
+
+            stemTiltForm: document.getElementById('stemTiltForm').value || '',
+
+            stemTiltAngle: document.getElementById('stemTiltAngle').value || '',
+
+            hasStemDefect: document.getElementById('stemDefectCheck').checked,
+
+            hasRootDefect: document.getElementById('rootDefectCheck').checked,
+
+            hasTarget: document.getElementById('targetCheck').checked,
+
+            grade: document.getElementById('treeGrade').value || '',
+
+            notes: document.getElementById('treeNotes').value || '',
+
+            color: selectedColor,
+
+            stemDefect_crack: document.getElementById('stemDefect_crack').checked,
+
+            stemDefect_dieback: document.getElementById('stemDefect_dieback').checked,
+
+            stemDefect_tear: document.getElementById('stemDefect_tear').checked,
+
+            stemDefect_notes: document.getElementById('stemDefect_notes').value || '',
+
+            rootDefect_crack: document.getElementById('rootDefect_crack').checked,
+
+            rootDefect_cut: document.getElementById('rootDefect_cut').checked,
+
+            rootDefect_girdle: document.getElementById('rootDefect_girdle').checked,
+
+            rootDefect_notes: document.getElementById('rootDefect_notes').value || '',
+
+            target_present: document.getElementById('target_present').checked,
+
+            target_absent: document.getElementById('target_absent').checked,
+
+            target_notes: document.getElementById('target_notes').value || '',
+
+        };
+
+
+
+        try {
+
+            if (currentTreeId) {
+
+                const treeRef = db.collection('users').doc(currentUser.uid).collection('trees').doc(currentTreeId);
+
+                await treeRef.update(treeData);
+
+                const treeIndex = trees.findIndex(t => t.id === currentTreeId);
+
+                if (treeIndex !== -1) trees[treeIndex] = { ...trees[treeIndex], ...treeData };
+
+            } else {
+
+                treeData.lat = currentClickPosition.lat;
+
+                treeData.lng = currentClickPosition.lng;
+
+                treeData.groupId = currentGroup.id;
+
+                treeData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+
+                const docRef = await db.collection('users').doc(currentUser.uid).collection('trees').add(treeData);
+
+                trees.push({ id: docRef.id, ...treeData });
+
+            }
+
+            updateFolderList(); updateTreeList(); updateMapMarkers();
+
+            closeModalById('treeModal');
+
+        } catch (error) {
+
+            console.error("Firestore 저장 실패 원인:", error);
+
+            alert(`저장에 실패했습니다. 개발자 도구(F12)의 콘솔(Console) 탭에서 자세한 오류를 확인하세요.\n\n오류: ${error.message}`);
+
+        }
+
+    }
+
+    
+
+    function openTreeModal(treeId = null) {
+
+        currentTreeId = treeId;
+
+        const modal = document.getElementById('treeModal');
+
+        const deleteBtn = document.getElementById('modalDeleteBtn');
+
+        const modalTitle = document.getElementById('treeModalTitle');
+
+        
+
+        let groupForTitle = treeId ? groups.find(g => g.id === trees.find(t => t.id === treeId)?.groupId) : currentGroup;
+
+        if (groupForTitle) {
+
+            const folderForTitle = folders.find(f => f.id === groupForTitle.folderId);
+
+            modalTitle.innerHTML = `수목 정보 입력 <small style="display: block; font-size: 13px; color: #555; font-weight: normal; margin-top: 4px;">(${folderForTitle?.name || '미지정'} / ${groupForTitle.name})</small>`;
+
+        } else {
+
+            modalTitle.textContent = '수목 정보 입력';
+
+        }
+
+
+
+        document.getElementById('treeForm').reset();
+
+        ['stemDefect_notes', 'rootDefect_notes', 'target_notes'].forEach(id => document.getElementById(id).value = '');
+
+        ['stemDefectModal', 'rootDefectModal', 'targetModal'].forEach(id => document.querySelectorAll(`#${id} input[type="checkbox"]`).forEach(cb => cb.checked = false));
+
+        handleStemTiltNormalCheck({target: {checked: false}});
+
+        handleDefectNormalCheck({target: {checked: false}});
+
+        
+
+        if (treeId) {
+
+            const tree = trees.find(t => t.id === treeId);
+
+            if (tree) {
+
+                document.getElementById('treeNumber').value = tree.number || '';
+
+                document.getElementById('treeSpecies').value = tree.species || '';
+
+                document.getElementById('treeDiameter').value = tree.diameter || '';
+
+                document.getElementById('treeHeight').value = tree.height || '';
+
+                document.getElementById('treeCrownWidth1').value = tree.crownWidth1 || '';
+
+                document.getElementById('treeCrownWidth2').value = tree.crownWidth2 || '';
+
+                document.getElementById('treeClearanceHeight').value = tree.clearanceHeight || '';
+
+                document.getElementById('stemTiltDirection').value = tree.stemTiltDirection || '';
+
+                document.getElementById('stemTiltForm').value = tree.stemTiltForm || '';
+
+                document.getElementById('stemTiltAngle').value = tree.stemTiltAngle ?? '';
+
+                document.getElementById('treeGrade').value = tree.grade || '';
+
+                document.getElementById('treeNotes').value = tree.notes || '';
+
+                
+
+                document.getElementById('stemDefectCheck').checked = tree.hasStemDefect || false;
+
+                document.getElementById('rootDefectCheck').checked = tree.hasRootDefect || false;
+
+                document.getElementById('targetCheck').checked = tree.hasTarget || false;
+
+                
+
+                document.getElementById('stemDefect_crack').checked = tree.stemDefect_crack || false;
+
+                document.getElementById('stemDefect_dieback').checked = tree.stemDefect_dieback || false;
+
+                document.getElementById('stemDefect_tear').checked = tree.stemDefect_tear || false;
+
+                document.getElementById('stemDefect_notes').value = tree.stemDefect_notes || '';
+
+                
+
+                document.getElementById('rootDefect_crack').checked = tree.rootDefect_crack || false;
+
+                document.getElementById('rootDefect_cut').checked = tree.rootDefect_cut || false;
+
+                document.getElementById('rootDefect_girdle').checked = tree.rootDefect_girdle || false;
+
+                document.getElementById('rootDefect_notes').value = tree.rootDefect_notes || '';
+
+
+
+                document.getElementById('target_present').checked = tree.target_present || false;
+
+                document.getElementById('target_absent').checked = tree.target_absent || false;
+
+                document.getElementById('target_notes').value = tree.target_notes || '';
+
+
+
+                const isTiltNormal = tree.stemTiltDirection === '정상' && tree.stemTiltForm === '정상' && (tree.stemTiltAngle === '0' || tree.stemTiltAngle == null);
+
+                document.getElementById('stemTiltNormalCheck').checked = isTiltNormal;
+
+                handleStemTiltNormalCheck({target: {checked: isTiltNormal}});
+
+                
+
+                const isDefectNormal = !tree.hasStemDefect && !tree.hasRootDefect && !tree.hasTarget;
+
+                document.getElementById('defectNormalCheck').checked = isDefectNormal;
+
+                handleDefectNormalCheck({target: {checked: isDefectNormal}});
+
+
+
+                const colorEl = document.querySelector(`#treeModal .color-option[data-color="${tree.color}"]`) || document.querySelector('#treeModal .color-option');
+
+                selectModalColor(colorEl, tree.color);
+
+                deleteBtn.style.display = 'inline-block';
+
+                deleteBtn.onclick = () => { deleteTree(treeId); closeModalById('treeModal'); };
+
+            }
+
+        } else {
+
+            selectModalColor(document.querySelector('#treeModal .color-option[data-color="green"]'), 'green');
+
+            deleteBtn.style.display = 'none';
+
+        }
+
+        modal.style.display = 'flex';
+
+    }
+
+    
+
+    function exportData() {
+
+        if (trees.length === 0) return alert('내보낼 데이터가 없습니다.');
+
+        const boolToOX = (val) => val ? 'O' : 'X';
+
+        const dataToExport = [];
+
+        trees.forEach(tree => {
+
+            const group = groups.find(g => g.id === tree.groupId);
+
+            const folder = group ? folders.find(f => f.id === group.folderId) : null;
+
+            dataToExport.push({
+
+                '폴더명': folder?.name || '', '그룹명': group?.name || '',
+
+                '번호': tree.number, '위도': tree.lat || '', '경도': tree.lng || '',
+
+                '색상': tree.color, '수종': tree.species,
+
+                '흉고(cm)': tree.diameter || '', '수고(m)': tree.height || '',
+
+                '수관폭(m)': `${tree.crownWidth1 || ''} x ${tree.crownWidth2 || ''}`,
+
+                '지하고(m)': tree.clearanceHeight || '',
+
+                '줄기기울기-방향': tree.stemTiltDirection || '', '줄기기울기-형태': tree.stemTiltForm || '', '줄기기울기-각도': tree.stemTiltAngle ?? '',
+
+                '등급': tree.grade || '', '비고': tree.notes || '',
+
+                '줄기부결함': boolToOX(tree.hasStemDefect), '줄기-균열/부후/공동': boolToOX(tree.stemDefect_crack), '줄기-가지고사': boolToOX(tree.stemDefect_dieback), '줄기-가지찢어짐': boolToOX(tree.stemDefect_tear), '줄기-비고': tree.stemDefect_notes || '',
+
+                '뿌리부결함': boolToOX(tree.hasRootDefect), '뿌리-균열/부후/공동': boolToOX(tree.rootDefect_crack), '뿌리-뿌리절단': boolToOX(tree.rootDefect_cut), '뿌리-뿌리조임/병목': boolToOX(tree.rootDefect_girdle), '뿌리-비고': tree.rootDefect_notes || '',
+
+                '피해대상물': boolToOX(tree.hasTarget), '대상물-존재': boolToOX(tree.target_present), '대상물-부존재': boolToOX(tree.target_absent), '대상물-비고': tree.target_notes || '',
+
+            });
+
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+        const workbook = XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(workbook, worksheet, "수목데이터");
+
+        XLSX.writeFile(workbook, `수목데이터_${new Date().toISOString().slice(0,10)}.xlsx`);
+
+    }
+
+
+
+    async function importData(event) {
+
+        const file = event.target.files[0];
+
+        if (!file || !currentUser) return;
+
+        const reader = new FileReader();
+
+        reader.onload = async function(e) {
+
+            let successCount = 0, errorCount = 0;
+
+            try {
+
+                const data = new Uint8Array(e.target.result);
+
+                const workbook = XLSX.read(data, {type: 'array'});
+
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+
+                if (json.length === 0) return alert("엑셀 파일에 데이터가 없습니다.");
+
+                if (!confirm("기존 데이터를 유지하고 새로운 데이터를 추가하시겠습니까?")) return;
+
+
+
+                for (const row of json) {
+
+                    const folderName = row['폴더명'] || '미분류 폴더';
+
+                    const groupName = row['그룹명'] || '미분류 그룹';
+
+                    let folder = folders.find(f => f.name === folderName);
+
+                    if (!folder) {
+
+                        const folderRef = await db.collection('users').doc(currentUser.uid).collection('folders').add({ name: folderName });
+
+                        folder = { id: folderRef.id, name: folderName }; folders.push(folder);
+
+                    }
+
+                    let group = groups.find(g => g.name === groupName && g.folderId === folder.id);
+
+                    if (!group) {
+
+                        const groupRef = await db.collection('users').doc(currentUser.uid).collection('groups').add({ name: groupName, folderId: folder.id, active: false, visible: true });
+
+                        group = { id: groupRef.id, name: groupName, folderId: folder.id, active: false, visible: true }; groups.push(group);
+
+                    }
+
+
+
+                    const crownParts = (row['수관폭(m)'] || 'x').split('x');
+
+                    const importedColor = String(row['색상'] || '').toLowerCase();
+
+                    const oxToBool = (val) => val === 'O';
+
+
+
+                    const newTree = {
+
+                        lat: parseFloat(row['위도']), lng: parseFloat(row['경도']), groupId: group.id, createdAt: new Date(),
+
+                        number: row['번호']?.toString() || '', species: row['수종'] || '', color: validColors.includes(importedColor) ? importedColor : 'gray',
+
+                        diameter: row['흉고(cm)']?.toString() || '', height: row['수고(m)']?.toString() || '',
+
+                        crownWidth1: crownParts[0]?.trim() || '', crownWidth2: crownParts[1]?.trim() || '',
+
+                        clearanceHeight: row['지하고(m)']?.toString() || '',
+
+                        stemTiltDirection: row['줄기기울기-방향'] || '', stemTiltForm: row['줄기기울기-형태'] || '', stemTiltAngle: row['줄기기울기-각도']?.toString() || '',
+
+                        grade: row['등급']?.toString() || '', notes: row['비고'] || '',
+
+                        hasStemDefect: oxToBool(row['줄기부결함']), stemDefect_crack: oxToBool(row['줄기-균열/부후/공동']), stemDefect_dieback: oxToBool(row['줄기-가지고사']), stemDefect_tear: oxToBool(row['줄기-가지찢어짐']), stemDefect_notes: row['줄기-비고'] || '',
+
+                        hasRootDefect: oxToBool(row['뿌리부결함']), rootDefect_crack: oxToBool(row['뿌리-균열/부후/공동']), rootDefect_cut: oxToBool(row['뿌리-뿌리절단']), rootDefect_girdle: oxToBool(row['뿌리-뿌리조임/병목']), rootDefect_notes: row['뿌리-비고'] || '',
+
+                        hasTarget: oxToBool(row['피해대상물']), target_present: oxToBool(row['대상물-존재']), target_absent: oxToBool(row['대상물-부존재']), target_notes: row['대상물-비고'] || '',
+
+                    };
+
+                    
+
+                    if (!isNaN(newTree.lat) && !isNaN(newTree.lng)) {
+
+                        await db.collection('users').doc(currentUser.uid).collection('trees').add(newTree);
+
+                        successCount++;
+
+                    } else { errorCount++; }
+
+                }
+
+                alert(`${successCount}개 데이터 가져오기 성공, ${errorCount}개 실패 (위도/경도 오류)`);
+
+            } catch (error) {
+
+                console.error("엑셀 파일 처리 중 오류:", error);
+
+                alert("엑셀 파일을 처리하는 중 오류가 발생했습니다.");
+
+            } finally {
+
+                event.target.value = ''; loadUserData();
+
+            }
+
+        };
+
+        reader.readAsArrayBuffer(file);
+
+    }
+
+    
+
+    async function loadUserData() { if (!currentUser) return; try { const folderSnapshot = await db.collection('users').doc(currentUser.uid).collection('folders').orderBy('name').get(); folders = folderSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); const groupSnapshot = await db.collection('users').doc(currentUser.uid).collection('groups').get(); groups = groupSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); const treeSnapshot = await db.collection('users').doc(currentUser.uid).collection('trees').get(); trees = treeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); updateFolderList(); updateTreeList(); updateMapMarkers(); } catch (error) { console.error("데이터 로딩 오류:", error); alert("데이터를 불러오는 데 실패했습니다."); } }
+
+    function setupCheckboxFilter(containerId) { const container = document.getElementById(containerId); if (!container) return; container.addEventListener('change', (e) => { if (e.target.type !== 'checkbox') return; const allCheckbox = container.querySelector('input[value="all"]'); const specificCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]:not([value="all"])')); if (e.target.value === 'all' && e.target.checked) { specificCheckboxes.forEach(cb => cb.checked = false); } else if (e.target.value !== 'all' && e.target.checked) { if(allCheckbox) allCheckbox.checked = false; } if (!specificCheckboxes.some(cb => cb.checked) && allCheckbox && !allCheckbox.checked) { allCheckbox.checked = true; } filterAndSortTrees(); }); }
+
+    function getSelectedFilterValues(containerId) { const container = document.getElementById(containerId); if (!container) return []; const allCheckbox = container.querySelector('input[value="all"]'); if (allCheckbox && allCheckbox.checked) return []; return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value); }
+
+    
+
+    function updateMapMarkers() {
+
+        if (!map) return;
+
+        markers.forEach(marker => marker.setMap(null));
+
+        markers = [];
+
+        const selectedColors = getSelectedFilterValues('colorFilterContainer');
+
+        const selectedGrades = getSelectedFilterValues('gradeFilterContainer');
+
+        const visibleTrees = trees.filter(tree => {
+
+            const group = groups.find(g => g.id === tree.groupId);
+
+            if (!group || !group.visible) return false;
+
+            const colorMatch = selectedColors.length === 0 || selectedColors.includes(tree.color);
+
+            const gradeStr = String(tree.grade);
+
+            const gradeMatch = selectedGrades.length === 0 || selectedGrades.includes(gradeStr);
+
+            return colorMatch && gradeMatch;
+
+        });
+
+
+
+        visibleTrees.forEach(tree => {
+
+            if (typeof tree.lat !== 'number' || typeof tree.lng !== 'number') return;
+
+            const position = new kakao.maps.LatLng(tree.lat, tree.lng);
+
+            const text = tree.number || '';
+
+            let textWidth = 0;
+
+            for (let i = 0; i < text.length; i++) {
+
+                const char = text.charCodeAt(i);
+
+                textWidth += (char >= 0xAC00 && char <= 0xD7A3) ? 7.5 : 4;
+
+            }
+
+            const padding = 10;
+
+            const svgWidth = Math.max(15, textWidth + padding);
+
+            const svgHeight = 19, rectHeight = 13, rectRadius = 7, pointerWidth = 4, fontSize = 8, textY = 11;
+
+            
+
+            const svgString = `
+
+              <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">
+
+                <rect x="1" y="1" width="${svgWidth - 2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+
+                <path d="M ${svgWidth/2 - pointerWidth} ${rectHeight} L ${svgWidth/2} ${svgHeight} L ${svgWidth/2 + pointerWidth} ${rectHeight} Z" fill="${colorMap[tree.color] || colorMap.gray}"/>
+
+                <text x="${svgWidth/2}" y="${textY}" font-size="${fontSize}" font-weight="bold" text-anchor="middle"
+
+                      fill="white" stroke="black" stroke-width="0.5" stroke-linejoin="round">${text}</text>
+
+              </svg>`;
+
+
+
+            const imageSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
+
+            const imageSize = new kakao.maps.Size(svgWidth, svgHeight);
+
+            const imageOption = { offset: new kakao.maps.Point(svgWidth / 2, svgHeight) };
+
+            const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+
+            const marker = new kakao.maps.Marker({ position, image: markerImage });
+
+
+
+            marker.setMap(map);
+
+            markers.push(marker);
+
+            kakao.maps.event.addListener(marker, 'click', () => editTree(tree.id));
+
+            kakao.maps.event.addListener(marker, 'rightclick', () => deleteTree(tree.id));
+
+        });
+
+    }
+
+
+
+    function updateFolderList() { const folderListDiv = document.getElementById('folderList'); folderListDiv.innerHTML = ''; if (folders.length === 0) { folderListDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">폴더가 없습니다.</div>'; return; } folders.forEach(folder => { const details = document.createElement('details'); details.open = true; details.innerHTML = `<summary><span class="folder-name">${folder.name}</span><div class="folder-actions"><button class="action-btn edit-btn">수정</button><button class="action-btn delete-btn">삭제</button></div></summary>`; details.querySelector('.edit-btn').addEventListener('click', (e) => {e.stopPropagation(); openFolderModal(folder.id);}); details.querySelector('.delete-btn').addEventListener('click', (e) => {e.stopPropagation(); deleteFolder(folder.id);}); const groupContainer = document.createElement('div'); groupContainer.className = 'group-container'; const groupsInFolder = groups.filter(g => g.folderId === folder.id).sort((a,b) => a.name.localeCompare(b.name, 'ko')); if (groupsInFolder.length > 0) { groupsInFolder.forEach(group => { const div = document.createElement('div'); div.className = `group-item ${currentGroup?.id === group.id ? 'active' : ''}`; const treeCount = trees.filter(t => t.groupId === group.id).length; div.innerHTML = `<div class="group-content"><input type="checkbox" class="group-checkbox" ${group.visible !== false ? 'checked' : ''}><div class="group-name">${group.name} (${treeCount}개)</div></div>`; div.querySelector('.group-name').addEventListener('click', () => selectGroup(group.id)); div.querySelector('.group-checkbox').addEventListener('change', (e) => toggleGroupVisibility(group.id, e.target.checked)); div.addEventListener('contextmenu', (e) => { e.preventDefault(); openGroupModal(group.id); }); addLongPressListener(div, () => openGroupModal(group.id)); groupContainer.appendChild(div); }); } else { groupContainer.innerHTML = '<div style="font-size: 11px; color: #888; padding: 5px 0;">그룹이 없습니다.</div>'; } details.appendChild(groupContainer); folderListDiv.appendChild(details); }); }
+
+    function updateTreeList() { const treeList = document.getElementById('treeList'); const treePagination = document.getElementById('treePagination'); const rightSidebarTitle = document.getElementById('rightSidebarTitle'); const treeListInfo = document.getElementById('treeListInfo'); treeList.innerHTML = ''; treePagination.innerHTML = ''; if (!currentGroup) { treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">그룹을 선택하세요.</div>'; rightSidebarTitle.textContent = '대상목 리스트'; treeListInfo.textContent = ''; return; } const folder = folders.find(f => f.id === currentGroup.folderId); rightSidebarTitle.innerHTML = `대상목 리스트 <small style="display: block; font-size: 13px; color: #555; font-weight: normal; margin-top: 4px;">(${folder?.name || '미지정'} / ${currentGroup.name})</small>`; let displayTrees = trees.filter(tree => tree.groupId === currentGroup.id); const selectedColors = getSelectedFilterValues('colorFilterContainer'); if (selectedColors.length > 0) displayTrees = displayTrees.filter(tree => selectedColors.includes(tree.color)); const selectedGrades = getSelectedFilterValues('gradeFilterContainer'); if (selectedGrades.length > 0) displayTrees = displayTrees.filter(tree => selectedGrades.includes(String(tree.grade))); treeListInfo.textContent = `총 ${displayTrees.length}개의 대상목`; const sortFilter = document.getElementById('sortFilter').value; displayTrees.sort((a, b) => sortFilter === 'number_desc' ? String(b.number).localeCompare(String(a.number), undefined, {numeric: true}) : String(a.number).localeCompare(String(b.number), undefined, {numeric: true})); if (displayTrees.length === 0) { treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">표시할 수목이 없습니다.</div>'; return; } const totalPages = Math.ceil(displayTrees.length / treesPerPage); const paginatedTrees = displayTrees.slice((currentTreePage - 1) * treesPerPage, currentTreePage * treesPerPage); if (totalPages > 1) { let paginationHTML = `<span class="page-info">${currentTreePage} / ${totalPages}</span>`; if (currentTreePage > 1) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage - 1})">이전</button>`; const startPage = Math.max(1, currentTreePage - 2), endPage = Math.min(totalPages, currentTreePage + 2); for (let i = startPage; i <= endPage; i++) paginationHTML += `<button class="page-btn ${i === currentTreePage ? 'active' : ''}" onclick="changeTreePage(${i})">${i}</button>`; if (currentTreePage < totalPages) paginationHTML += `<button class="page-btn" onclick="changeTreePage(${currentTreePage + 1})">다음</button>`; treePagination.innerHTML = paginationHTML; } paginatedTrees.forEach(tree => { const div = document.createElement('div'); div.className = 'group-item'; let details = []; if (tree.diameter) details.push(`흉고:${tree.diameter}${String(tree.diameter).match(/[^0-9\.]/) ? '' : 'cm'}`); if (tree.height) details.push(`수고:${tree.height}${String(tree.height).match(/[^0-9\.]/) ? '' : 'm'}`); if (tree.crownWidth1 && tree.crownWidth2) details.push(`수관폭:${tree.crownWidth1}x${tree.crownWidth2}m`); if (tree.grade) details.push(`등급:${tree.grade}`); div.innerHTML = `<div class="group-content"><div style="width:12px;height:12px;border-radius:50%;background:${colorMap[tree.color]||colorMap.gray};flex-shrink:0;margin-top:3px;"></div><div style="flex:1;min-width:0;"><div><strong>${tree.number}</strong> - ${tree.species}</div><div class="small-text">${details.join(' / ')}</div></div></div>`; div.addEventListener('click', () => panToTree(tree.id)); div.addEventListener('contextmenu', e => { e.preventDefault(); openTreeModal(tree.id); }); addLongPressListener(div, () => openTreeModal(tree.id)); treeList.appendChild(div); }); }
+
+    async function handleFolderFormSubmit(e) { e.preventDefault(); const folderName = document.getElementById('folderName').value.trim(); if (!folderName || !currentUser) return; try { if (currentFolderId) { await db.collection('users').doc(currentUser.uid).collection('folders').doc(currentFolderId).update({ name: folderName }); } else { await db.collection('users').doc(currentUser.uid).collection('folders').add({ name: folderName }); } await loadUserData(); closeModalById('folderModal'); } catch (error) { console.error("폴더 저장 오류:", error); alert("폴더 저장 실패."); } }
+
+    async function deleteFolder(folderId) { if (!currentUser) return; const folder = folders.find(f => f.id === folderId); if (!folder || !confirm(`'${folder.name}' 폴더와 모든 하위 데이터를 삭제하시겠습니까?`)) return; const batch = db.batch(); const groupsToDelete = groups.filter(g => g.folderId === folderId); for (const group of groupsToDelete) { trees.filter(t => t.groupId === group.id).forEach(t => batch.delete(db.collection('users').doc(currentUser.uid).collection('trees').doc(t.id))); batch.delete(db.collection('users').doc(currentUser.uid).collection('groups').doc(group.id)); } batch.delete(db.collection('users').doc(currentUser.uid).collection('folders').doc(folderId)); try { await batch.commit(); await loadUserData(); } catch (error) { console.error("폴더 삭제 오류:", error); alert("폴더 삭제 실패."); } }
+
+    async function handleGroupFormSubmit(e) { e.preventDefault(); const groupName = document.getElementById('groupName').value.trim(); const folderId = document.getElementById('groupFolderSelect').value; if (!groupName || !folderId || !currentUser) return; const groupData = { name: groupName, folderId, visible: true }; try { if (currentGroupId) { await db.collection('users').doc(currentUser.uid).collection('groups').doc(currentGroupId).update({ name: groupName, folderId }); } else { await db.collection('users').doc(currentUser.uid).collection('groups').add(groupData); } await loadUserData(); closeModalById('groupModal'); } catch (error) { console.error("그룹 저장 오류:", error); alert("그룹 저장 실패."); } }
+
+    async function deleteGroup(groupId) { if (!currentUser) return; const group = groups.find(g => g.id === groupId); if (!group) return; const treeCount = trees.filter(t => t.groupId === groupId).length; if (!confirm(`'${group.name}' 그룹과 포함된 ${treeCount}개의 수목을 모두 삭제하시겠습니까?`)) return; const batch = db.batch(); trees.filter(t => t.groupId === groupId).forEach(t => batch.delete(db.collection('users').doc(currentUser.uid).collection('trees').doc(t.id))); batch.delete(db.collection('users').doc(currentUser.uid).collection('groups').doc(groupId)); try { await batch.commit(); if (currentGroup?.id === groupId) currentGroup = null; await loadUserData(); } catch (error) { console.error("그룹 삭제 오류:", error); alert("그룹 삭제 실패."); } }
+
+    async function deleteTree(treeId) { if (!currentUser) return; const treeToDelete = trees.find(t => t.id === treeId); if (!treeToDelete || !confirm(`'${treeToDelete.number} - ${treeToDelete.species}' 수목 정보를 삭제하시겠습니까?`)) return; try { await db.collection('users').doc(currentUser.uid).collection('trees').doc(treeId).delete(); trees = trees.filter(t => t.id !== treeId); updateTreeList(); updateFolderList(); updateMapMarkers(); } catch (error) { console.error("수목 정보 삭제 오류:", error); alert("수목 정보 삭제 실패."); } }
+
+    function addLongPressListener(element, callback, duration = 500) { let timer; const start = (e) => { if (e.touches?.length > 1) return; timer = setTimeout(() => { timer = null; callback?.(e); }, duration); }; const cancel = () => clearTimeout(timer); element.addEventListener("touchstart", start, { passive: true }); ["touchend", "touchmove"].forEach(evt => element.addEventListener(evt, cancel)); }
+
+    function initMap() {
+
+        const container = document.getElementById('map');
+
+        const options = {
+
+            center: new kakao.maps.LatLng(37.5665, 126.9780),
+
+            level: 3,
+
+            draggable: true,
+
+            scrollwheel: true
+
+        };
+
+        map = new kakao.maps.Map(container, options);
+
+        geocoder = new kakao.maps.services.Geocoder();
+
+        kakao.maps.event.addListener(map, 'rightclick', (e) => addNewTreeAt(e.latLng));
+
+        addLongPressListener(container, (e) => {
+
+            const touch = e.touches[0];
+
+            const rect = container.getBoundingClientRect();
+
+            addNewTreeAt(map.getProjection().coordsFromContainerPoint(new kakao.maps.Point(touch.clientX - rect.left, touch.clientY - rect.top)));
+
+        });
+
+        container.addEventListener('contextmenu', e => e.preventDefault());
+
+        updateMapMarkers();
+
+    }
+
+    function addNewTreeAt(latlng) { if (!currentGroup) { alert('먼저 수목을 추가할 그룹을 선택해주세요.'); return; } currentClickPosition = { lat: latlng.getLat(), lng: latlng.getLng() }; openTreeModal(); }
+
+    function panToTree(treeId) { const tree = trees.find(t => t.id === treeId); if (tree?.lat && tree?.lng) { map.panTo(new kakao.maps.LatLng(tree.lat, tree.lng)); if (window.innerWidth <= 1024) { document.getElementById('right-sidebar').classList.remove('visible'); document.getElementById('backdrop').style.display = 'none'; } } }
+
+    
+
+    function showMyLocation() {
+
+        if (location.protocol !== 'https:') {
+
+            return alert('보안(HTTPS) 연결이 필요합니다. 아이폰, 아이패드 등 iOS 기기에서는 HTTPS 환경에서만 위치 정보를 사용할 수 있습니다.');
+
+        }
+
+
+
+        if (navigator.geolocation) {
+
+            navigator.geolocation.getCurrentPosition(
+
+                (position) => {
+
+                    const locPosition = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+                    if (myLocationMarker) myLocationMarker.setMap(null);
+
+                    myLocationMarker = new kakao.maps.Marker({ map, position: locPosition, image: new kakao.maps.MarkerImage(`data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#007bff" fill-opacity="0.3"/><circle cx="12" cy="12" r="6" fill="#007bff" stroke="white" stroke-width="2"/></svg>')}`, new kakao.maps.Size(24, 24)) });
+
+                    map.setCenter(locPosition);
+
+                },
+
+                (error) => {
+
+                    let errorMessage = "위치 정보를 가져올 수 없습니다.";
+
+                    switch (error.code) {
+
+                        case error.PERMISSION_DENIED:
+
+                            errorMessage = "위치 정보 권한이 차단되었습니다.\n아이폰 설정 > 개인정보 보호 및 보안 > 위치 서비스에서 브라우저의 위치 권한을 확인해주세요.";
+
+                            break;
+
+                        case error.POSITION_UNAVAILABLE:
+
+                            errorMessage = "현재 위치를 찾을 수 없습니다.\nGPS 또는 네트워크 연결을 확인해주세요.";
+
+                            break;
+
+                        case error.TIMEOUT:
+
+                            errorMessage = "위치를 가져오는 데 시간이 초과되었습니다.";
+
+                            break;
+
+                    }
+
+                    alert(errorMessage);
+
+                }
+
+            );
+
+        } else {
+
+            alert("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
+
+        }
+
+    }
+
+
+
+    function changeMapType(type) { document.getElementById('roadmapBtn').classList.toggle('active', type === 'ROADMAP'); document.getElementById('satelliteBtn').classList.toggle('active', type !== 'ROADMAP'); map.setMapTypeId(kakao.maps.MapTypeId[type]); }
+
+    function toggleSearchType(event) { document.getElementById('keywordSearchContainer').style.display = event.target.value === 'keyword' ? 'block' : 'none'; document.getElementById('coordSearchContainer').style.display = event.target.value === 'coord' ? 'block' : 'none'; }
+
+    function searchLocation() { const keyword = document.getElementById('searchInput').value.trim(); if (!keyword) return alert('검색어를 입력하세요.'); new kakao.maps.services.Places().keywordSearch(keyword, (data, status) => { if (status === kakao.maps.services.Status.OK) map.setCenter(new kakao.maps.LatLng(data[0].y, data[0].x)); else geocoder.addressSearch(keyword, (result, status) => { if (status === kakao.maps.services.Status.OK) map.setCenter(new kakao.maps.LatLng(result[0].y, result[0].x)); else alert('검색 결과가 없습니다.'); }); }); }
+
+    function searchByCoords() { const lat = parseFloat(document.getElementById('latInput').value), lng = parseFloat(document.getElementById('lngInput').value); if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return alert('유효한 위도(-90~90), 경도(-180~180)를 입력해주세요.'); map.setCenter(new kakao.maps.LatLng(lat, lng)); }
+
+    function selectModalColor(element, color) { document.querySelectorAll('#treeModal .color-option').forEach(o => o.classList.remove('active')); element.classList.add('active'); selectedColor = color; }
+
+    function openFolderModal(folderId = null) { currentFolderId = folderId; const modal = document.getElementById('folderModal'); if(folderId){ const folder = folders.find(f => f.id === folderId); if(folder) { document.getElementById('folderModalTitle').textContent = '폴더 수정'; document.getElementById('folderName').value = folder.name; } } else { document.getElementById('folderModalTitle').textContent = '새 폴더 생성'; document.getElementById('folderName').value = ''; } modal.style.display = 'flex'; }
+
+    function openGroupModal(groupId = null) { currentGroupId = groupId; const modal = document.getElementById('groupModal'); const deleteBtn = document.getElementById('groupModalDeleteBtn'); if (groupId) { const group = groups.find(g => g.id === groupId); if (group) { document.getElementById('groupModalTitle').textContent = '그룹 수정'; document.getElementById('groupName').value = group.name; populateFolderSelect(group.folderId); deleteBtn.style.display = 'inline-block'; deleteBtn.onclick = () => { closeModalById('groupModal'); setTimeout(() => deleteGroup(groupId), 50); }; } } else { document.getElementById('groupModalTitle').textContent = '새 그룹 생성'; document.getElementById('groupName').value = ''; populateFolderSelect(); deleteBtn.style.display = 'none'; } modal.style.display = 'flex'; }
+
+    function populateFolderSelect(selectedFolderId) { const select = document.getElementById('groupFolderSelect'); select.innerHTML = ''; folders.forEach(folder => { const option = document.createElement('option'); option.value = folder.id; option.textContent = folder.name; if (folder.id === selectedFolderId) option.selected = true; select.appendChild(option); }); }
+
+    async function toggleGroupVisibility(groupId, isChecked) { const group = groups.find(g => g.id === groupId); if (group) { group.visible = isChecked; if (currentUser) db.collection('users').doc(currentUser.uid).collection('groups').doc(groupId).update({ visible: isChecked }).catch(console.error); updateMapMarkers(); } }
+
+    
+
+    function selectGroup(groupId) {
+
+        currentGroup = groups.find(g => g.id === groupId) || null;
+
+        currentTreePage = 1;
+
+        updateFolderList();
+
+        updateTreeList();
+
+        
+
+        if (window.innerWidth <= 1024) {
+
+            document.getElementById('left-sidebar').classList.remove('visible');
+
+            const rightSidebar = document.getElementById('right-sidebar');
+
+            if (!rightSidebar.classList.contains('visible')) {
+
+                rightSidebar.classList.add('visible');
+
+                document.getElementById('backdrop').style.display = 'block';
+
+            }
+
+        }
+
+    }
+
+    
+
+    function changeTreePage(page) { currentTreePage = page; updateTreeList(); }
+
+    function filterAndSortTrees() { currentTreePage = 1; updateTreeList(); updateMapMarkers(); }
+
+    function editTree(treeId) { panToTree(treeId); openTreeModal(treeId); }
+
+    function toggleLeftSidebarDesktop() {
+
+        const sidebar = document.getElementById('left-sidebar');
+
+        const btn = document.getElementById('toggle-left-sidebar-desktop');
+
+        sidebar.classList.toggle('collapsed');
+
+        btn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+
+        setTimeout(() => map && map.relayout(), 310);
+
+    }
+
+
+
+    function toggleRightSidebarDesktop() {
+
+        const sidebar = document.getElementById('right-sidebar');
+
+        const btn = document.getElementById('toggle-right-sidebar-desktop');
+
+        sidebar.classList.toggle('collapsed');
+
+        btn.textContent = sidebar.classList.contains('collapsed') ? '◀' : '▶';
+
+        setTimeout(() => map && map.relayout(), 310);
+
+    }
+
+    </script>
+
 </body>
+
 </html>

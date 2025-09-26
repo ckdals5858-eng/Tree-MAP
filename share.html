@@ -8,14 +8,104 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; }
         #map { width: 100%; height: 100%; }
-        #message { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 8px; font-family: sans-serif; }
+        #message { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 8px; z-index: 2000;}
+        
+        #myLocationBtn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10;
+            padding: 8px 12px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        #myLocationBtn:hover {
+            background-color: #f8f8f8;
+        }
+
+        /* ⭐ 1. 사이드바 및 목록 버튼 스타일 추가 */
+        #toggleListBtn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 10;
+            width: 40px;
+            height: 40px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        #treeSidebar {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 280px;
+            height: 100%;
+            background-color: white;
+            box-shadow: -2px 0 8px rgba(0,0,0,0.15);
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+        #treeSidebar.visible {
+            transform: translateX(0);
+        }
+        #treeSidebar h4 {
+            padding: 15px;
+            margin: 0;
+            font-size: 16px;
+            border-bottom: 1px solid #eee;
+            flex-shrink: 0;
+        }
+        #treeListContainer {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        .tree-list-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .tree-list-item:hover {
+            background-color: #f5f5f5;
+        }
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <div id="message" style="display: none;"></div>
+
+    <button id="myLocationBtn">내 위치</button>
+
+    <button id="toggleListBtn">☰</button>
+    <div id="treeSidebar">
+        <h4>공유된 수목 목록</h4>
+        <div id="treeListContainer"></div>
+    </div>
+
 
     <script>
         const firebaseConfig = {
@@ -30,14 +120,21 @@
         const db = firebase.firestore();
         const colorMap = { red: '#ff4757', green: '#2ed573', blue: '#3742fa', orange: '#ffa502', gray: '#a4b0be' };
 
+        let map;
+        let myLocationMarker = null;
+
         document.addEventListener('DOMContentLoaded', () => {
             kakao.maps.load(loadSharedMap);
+            document.getElementById('myLocationBtn').addEventListener('click', showMyLocation);
+            // ⭐ 3. 목록 토글 버튼 이벤트 리스너 추가
+            document.getElementById('toggleListBtn').addEventListener('click', toggleSidebar);
         });
 
         function showMessage(text) {
             const msgEl = document.getElementById('message');
             msgEl.textContent = text;
             msgEl.style.display = 'block';
+            setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
         }
 
         async function loadSharedMap() {
@@ -52,7 +149,6 @@
                 const docRef = db.collection('shares').doc(shareId);
                 const docSnap = await docRef.get();
 
-                // ⭐ 아래 부분을 docSnap.exists() 에서 docSnap.exists 로 수정했습니다.
                 if (!docSnap.exists) {
                     return showMessage('공유 데이터를 찾을 수 없거나 삭제되었습니다.');
                 }
@@ -69,39 +165,56 @@
                     center: new kakao.maps.LatLng(trees[0].lat, trees[0].lng),
                     level: 5
                 };
-                const map = new kakao.maps.Map(mapContainer, mapOption);
+                map = new kakao.maps.Map(mapContainer, mapOption); 
                 const bounds = new kakao.maps.LatLngBounds();
 
+                // ⭐ 4. 목록을 채우는 로직 추가
+                const listContainer = document.getElementById('treeListContainer');
+                listContainer.innerHTML = ''; // 기존 목록 초기화
+
                 trees.forEach(tree => {
-                    if (typeof tree.lat !== 'number' || typeof tree.lng !== 'number') return;
-                    
-                    const position = new kakao.maps.LatLng(tree.lat, tree.lng);
-                    const text = tree.number || '';
-                    
-                    let textWidth = 0;
-                    for (let i = 0; i < text.length; i++) {
-                        const char = text.charCodeAt(i);
-                        textWidth += (char >= 0xAC00 && char <= 0xD7A3) ? 9 : 4.8;
+                    // 지도에 마커 추가
+                    if (typeof tree.lat === 'number' && typeof tree.lng === 'number') {
+                        const position = new kakao.maps.LatLng(tree.lat, tree.lng);
+                        const text = tree.number || '';
+                        
+                        let textWidth = 0;
+                        for (let i = 0; i < text.length; i++) {
+                            const char = text.charCodeAt(i);
+                            textWidth += (char >= 0xAC00 && char <= 0xD7A3) ? 9 : 4.8;
+                        }
+                        const padding = 12;
+                        const svgWidth = Math.max(18, textWidth + padding);
+                        const svgHeight = 23, rectHeight = 16, rectRadius = 8, pointerWidth = 5, fontSize = 10, textY = 13;
+                        
+                        const svgString = `
+                          <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">
+                              <rect x="1" y="1" width="${svgWidth - 2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+                              <path d="M ${svgWidth/2 - pointerWidth} ${rectHeight} L ${svgWidth/2} ${svgHeight} L ${svgWidth/2 + pointerWidth} ${rectHeight} Z" fill="${colorMap[tree.color] || colorMap.gray}"/>
+                              <text x="${svgWidth/2}" y="${textY}" font-size="${fontSize}" font-weight="bold" text-anchor="middle" fill="white">${text}</text>
+                          </svg>`;
+
+                        const imageSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
+                        const imageSize = new kakao.maps.Size(svgWidth, svgHeight);
+                        const imageOption = { offset: new kakao.maps.Point(svgWidth / 2, svgHeight) };
+                        const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+                        const marker = new kakao.maps.Marker({ position, image: markerImage });
+
+                        marker.setMap(map);
+                        bounds.extend(position);
                     }
-                    const padding = 12;
-                    const svgWidth = Math.max(18, textWidth + padding);
-                    const svgHeight = 23, rectHeight = 16, rectRadius = 8, pointerWidth = 5, fontSize = 10, textY = 13;
-                    
-                    const svgString = `
-                      <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">
-                          <rect x="1" y="1" width="${svgWidth - 2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
-                          <path d="M ${svgWidth/2 - pointerWidth} ${rectHeight} L ${svgWidth/2} ${svgHeight} L ${svgWidth/2 + pointerWidth} ${rectHeight} Z" fill="${colorMap[tree.color] || colorMap.gray}"/>
-                          <text x="${svgWidth/2}" y="${textY}" font-size="${fontSize}" font-weight="bold" text-anchor="middle" fill="white">${text}</text>
-                      </svg>`;
 
-                    const imageSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
-                    const imageSize = new kakao.maps.Size(svgWidth, svgHeight);
-                    const imageOption = { offset: new kakao.maps.Point(svgWidth / 2, svgHeight) };
-                    const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
-                    const marker = new kakao.maps.Marker({ position, image: markerImage });
-
-                    marker.setMap(map);
-                    bounds.extend(position);
+                    // 사이드바에 목록 아이템 추가
+                    const listItem = document.createElement('div');
+                    listItem.className = 'tree-list-item';
+                    listItem.innerHTML = `
+                        <span class="color-dot" style="background-color: ${colorMap[tree.color] || '#aaaaaa'};"></span>
+                        <span>${tree.number || '번호없음'} - ${tree.species || '수종미상'}</span>
+                    `;
+                    listItem.addEventListener('click', () => {
+                        map.panTo(new kakao.maps.LatLng(tree.lat, tree.lng));
+                    });
+                    listContainer.appendChild(listItem);
                 });
 
                 map.setBounds(bounds);
@@ -110,6 +223,53 @@
                 console.error("Error loading shared data:", error);
                 showMessage('데이터를 불러오는 중 오류가 발생했습니다.');
             }
+        }
+        
+        function showMyLocation() {
+            if (!map) return showMessage("지도가 로드될 때까지 잠시만 기다려주세요.");
+
+            if (location.protocol !== 'https:') {
+                return showMessage('보안(HTTPS) 연결에서만 위치 정보를 사용할 수 있습니다.');
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const locPosition = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
+                        
+                        if (myLocationMarker) myLocationMarker.setMap(null);
+
+                        myLocationMarker = new kakao.maps.Marker({ 
+                            map: map, 
+                            position: locPosition, 
+                            image: new kakao.maps.MarkerImage(`data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#007bff" fill-opacity="0.3"/><circle cx="12" cy="12" r="6" fill="#007bff" stroke="white" stroke-width="2"/></svg>')}`, new kakao.maps.Size(24, 24)) 
+                        });
+                        map.panTo(locPosition);
+                    },
+                    (error) => {
+                        let errorMessage = "위치 정보를 가져올 수 없습니다.";
+                        switch (error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage = "위치 정보 권한이 차단되었습니다.\n브라우저 설정을 확인해주세요.";
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage = "현재 위치를 찾을 수 없습니다.";
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage = "시간이 초과되었습니다.";
+                                break;
+                        }
+                        showMessage(errorMessage);
+                    }
+                );
+            } else {
+                showMessage("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
+            }
+        }
+
+        // ⭐ 5. 사이드바를 열고 닫는 함수 추가
+        function toggleSidebar() {
+            document.getElementById('treeSidebar').classList.toggle('visible');
         }
     </script>
 </body>

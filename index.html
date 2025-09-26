@@ -1031,7 +1031,7 @@
         reader.readAsArrayBuffer(file);
     }
     
-    async function loadUserData() { if (!currentUser) return; try { const folderSnapshot = await db.collection('users').doc(currentUser.uid).collection('folders').get(); folders = folderSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); const groupSnapshot = await db.collection('users').doc(currentUser.uid).collection('groups').get(); groups = groupSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); const treeSnapshot = await db.collection('users').doc(currentUser.uid).collection('trees').get(); trees = treeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); updateFolderList(); updateTreeList(); updateMapMarkers(); } catch (error) { console.error("데이터 로딩 오류:", error); showCustomAlert("데이터를 불러오는 데 실패했습니다."); } }
+    async function loadUserData() { if (!currentUser) return; try { const folderSnapshot = await db.collection('users').doc(currentUser.uid).collection('folders').orderBy('name').get(); folders = folderSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); const groupSnapshot = await db.collection('users').doc(currentUser.uid).collection('groups').get(); groups = groupSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); const treeSnapshot = await db.collection('users').doc(currentUser.uid).collection('trees').get(); trees = treeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); updateFolderList(); updateTreeList(); updateMapMarkers(); } catch (error) { console.error("데이터 로딩 오류:", error); showCustomAlert("데이터를 불러오는 데 실패했습니다."); } }
     function setupCheckboxFilter(containerId) { const container = document.getElementById(containerId); if (!container) return; container.addEventListener('change', (e) => { if (e.target.type !== 'checkbox') return; const allCheckbox = container.querySelector('input[value="all"]'); const specificCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]:not([value="all"])')); if (e.target.value === 'all' && e.target.checked) { specificCheckboxes.forEach(cb => cb.checked = false); } else if (e.target.value !== 'all' && e.target.checked) { if(allCheckbox) allCheckbox.checked = false; } if (!specificCheckboxes.some(cb => cb.checked) && allCheckbox && !allCheckbox.checked) { allCheckbox.checked = true; } filterAndSortTrees(); }); }
     function getSelectedFilterValues(containerId) { const container = document.getElementById(containerId); if (!container) return []; const allCheckbox = container.querySelector('input[value="all"]'); if (allCheckbox && allCheckbox.checked) return []; return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value); }
     
@@ -1410,5 +1410,3 @@
     </script>
 </body>
 </html>
-
-

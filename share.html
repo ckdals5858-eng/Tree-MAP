@@ -211,16 +211,24 @@
         }
     }
     
+    // ⭐⭐⭐ 문제가 되었던 initMap 함수를 보다 안정적인 방식으로 수정 ⭐⭐⭐
     function initMap() {
         const container = document.getElementById('map');
-        if(sharedTrees.length === 0) {
+        if (!sharedTrees || sharedTrees.length === 0) {
             container.innerHTML = "표시할 수목 데이터가 없습니다.";
             return;
         }
 
+        // 1. 지도를 기본 위치에 먼저 생성합니다.
+        const defaultOptions = {
+            center: new kakao.maps.LatLng(37.5665, 126.9780),
+            level: 8
+        };
+        map = new kakao.maps.Map(container, defaultOptions);
+
+        // 2. 좌표 데이터를 기반으로 지도 범위를 계산합니다.
         const bounds = new kakao.maps.LatLngBounds();
         let validPointsFound = 0;
-
         sharedTrees.forEach(tree => {
             if (typeof tree.lat === 'number' && typeof tree.lng === 'number' && !isNaN(tree.lat) && !isNaN(tree.lng)) {
                 bounds.extend(new kakao.maps.LatLng(tree.lat, tree.lng));
@@ -228,15 +236,7 @@
             }
         });
 
-        let options;
-        if (validPointsFound > 0) {
-            options = { center: bounds.getCenter() };
-        } else {
-            options = { center: new kakao.maps.LatLng(37.5665, 126.9780), level: 8 };
-        }
-
-        map = new kakao.maps.Map(container, options);
-
+        // 3. 유효한 좌표가 하나라도 있다면, 계산된 범위로 지도를 이동시킵니다.
         if (validPointsFound > 0) {
             map.setBounds(bounds);
         }

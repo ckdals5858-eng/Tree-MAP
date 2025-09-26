@@ -1463,7 +1463,7 @@
                 creator: currentUser.uid
             });
             const shareId = shareRef.id;
-            const webViewUrl = `${window.location.origin}/share.html?id=${shareId}`;
+            const webViewUrl = `${window.location.origin}/Tree-MAP/share.html?id=${shareId}`;
             document.getElementById('shareWebViewLinkInput').value = webViewUrl;
         } catch (error) {
             console.error("웹 공유 링크 생성 실패:", error);
@@ -1521,3 +1521,4 @@
     </script>
 </body>
 </html>
+

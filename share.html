@@ -8,14 +8,15 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; }
-        #map { width: 100%; height: 100%; }
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .container { display: flex; height: 100%; }
+        #map { flex-grow: 1; height: 100%; }
         #message { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 8px; z-index: 2000;}
         
         #myLocationBtn {
             position: absolute;
             bottom: 20px;
-            right: 20px;
+            left: 20px; /* 사이드바가 오른쪽에 있으니 왼쪽으로 이동 */
             z-index: 10;
             padding: 8px 12px;
             background-color: white;
@@ -29,66 +30,23 @@
             background-color: #f8f8f8;
         }
 
-        #toggleListBtn {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            z-index: 10;
-            width: 40px;
-            height: 40px;
-            background-color: white;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-
+        /* ⭐ 메인 페이지의 사이드바 스타일을 그대로 적용 */
         #treeSidebar {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 280px;
-            height: 100%;
-            background-color: white;
-            box-shadow: -2px 0 8px rgba(0,0,0,0.15);
-            transform: translateX(100%);
-            transition: transform 0.3s ease-in-out;
-            z-index: 1000;
+            width: 300px;
+            background: #f8f9fa;
+            border-left: 1px solid #e9ecef;
             display: flex;
             flex-direction: column;
+            flex-shrink: 0;
         }
-        #treeSidebar.visible {
-            transform: translateX(0);
-        }
-        
-        #treeSidebar summary {
+        #treeSidebar h4 {
             padding: 15px;
             margin: 0;
             font-size: 16px;
             border-bottom: 1px solid #eee;
+            background-color: #f1f3f5;
             flex-shrink: 0;
-            font-weight: bold;
-            cursor: pointer;
-            list-style: none; 
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
-        #treeSidebar summary::-webkit-details-marker {
-            display: none; 
-        }
-        #treeSidebar summary::after {
-            content: '▲';
-            font-size: 12px;
-            transition: transform 0.2s;
-        }
-        #treeSidebar details:not([open]) > summary::after {
-            transform: rotate(180deg);
-        }
-        
-        /* ⭐ 필터 영역 스타일 추가 */
         .filters {
             padding: 10px;
             background: #f8f9fa;
@@ -99,11 +57,13 @@
         }
         .filter-group {
             display: flex;
-            flex-wrap: wrap; /* 이제 여러 줄로 표시될 수 있음 */
+            flex-wrap: nowrap; /* 한 줄로 표시하고 스크롤 */
+            overflow-x: auto;
             gap: 4px 8px;
             align-items: center;
             font-size: 11px;
             width: 100%;
+            padding-bottom: 5px; /* 스크롤바를 위한 공간 */
         }
         .filter-group .filter-title { font-weight: bold; font-size: 12px; margin-right: 5px; white-space: nowrap; }
         .filter-group label {
@@ -113,21 +73,26 @@
         .filter-group label:hover { background-color: #e9ecef; }
         .filter-group input[type="checkbox"] { margin: 0; transform: scale(0.9); }
         .filters #sortFilter { font-size: 12px; padding: 4px; border-radius: 4px; border: 1px solid #ccc; }
-
+        
+        #treeListInfo {
+            padding: 8px 12px; font-size: 12px; color: #333;
+            background: #f1f3f5; border-bottom: 1px solid #e9ecef;
+        }
         #treeListContainer {
             overflow-y: auto;
             flex-grow: 1;
         }
         .tree-list-item {
             display: flex;
-            padding: 12px 15px;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 10px 12px;
+            border-bottom: 1px solid #e9ecef;
             cursor: pointer;
+            background-color: white;
             transition: background-color 0.2s;
             align-items: flex-start;
         }
         .tree-list-item:hover {
-            background-color: #f5f5f5;
+            background-color: #e9f5ff;
         }
         .color-dot {
             width: 12px;
@@ -137,23 +102,19 @@
             flex-shrink: 0;
             margin-top: 3px;
         }
-        .tree-details {
-             font-size: 11px;
-             color: #666;
-             margin-top: 4px;
-        }
+        .tree-info-main { font-size: 13px; }
+        .tree-info-sub { font-size: 11px; color: #666; margin-top: 4px; }
     </style>
 </head>
 <body>
-    <div id="map"></div>
-    <div id="message" style="display: none;"></div>
-
-    <button id="myLocationBtn">내 위치</button>
-
-    <button id="toggleListBtn">☰</button>
-    <div id="treeSidebar">
-        <details id="filterDetails">
-            <summary>필터 및 정렬</summary>
+    <div class="container">
+        <div id="map">
+            <button id="myLocationBtn">내 위치</button>
+        </div>
+        <div id="message" style="display: none;"></div>
+    
+        <div id="treeSidebar">
+            <h4>공유 목록</h4>
             <div class="filters">
                 <div id="colorFilterContainer" class="filter-group">
                     <span class="filter-title">색상:</span>
@@ -176,14 +137,12 @@
                     </select>
                 </div>
             </div>
-        </details>
-
-        <details open>
-            <summary>공유 목록 <span id="listCount" style="font-weight: normal; font-size: 14px;"></span></summary>
+            <div id="treeListInfo">
+                <span id="treeListCount"></span>
+            </div>
             <div id="treeListContainer"></div>
-        </details>
+        </div>
     </div>
-
 
     <script>
         const firebaseConfig = {
@@ -200,15 +159,13 @@
 
         let map;
         let myLocationMarker = null;
-        let markers = []; // ⭐ 마커 배열을 전역으로 이동
-        let allSharedTrees = []; // ⭐ 전체 수목 데이터를 저장할 배열
+        let markers = []; 
+        let allSharedTrees = [];
 
         document.addEventListener('DOMContentLoaded', () => {
             kakao.maps.load(loadSharedMap);
             document.getElementById('myLocationBtn').addEventListener('click', showMyLocation);
-            document.getElementById('toggleListBtn').addEventListener('click', toggleSidebar);
 
-            // ⭐ 필터와 정렬에 이벤트 리스너 추가
             document.querySelectorAll('#colorFilterContainer input, #gradeFilterContainer input').forEach(el => {
                 el.addEventListener('change', applyFiltersAndSort);
             });
@@ -239,8 +196,8 @@
                 const mapOption = { center: new kakao.maps.LatLng(allSharedTrees[0].lat, allSharedTrees[0].lng), level: 5 };
                 map = new kakao.maps.Map(mapContainer, mapOption);
 
-                populateGradeFilter(allSharedTrees); // ⭐ 등급 필터 동적 생성
-                applyFiltersAndSort(); // ⭐ 필터 적용 및 렌더링 시작
+                populateGradeFilter(allSharedTrees);
+                applyFiltersAndSort();
 
             } catch (error) {
                 console.error("Error loading shared data:", error);
@@ -248,7 +205,6 @@
             }
         }
         
-        // ⭐ 등급 필터 옵션을 동적으로 생성하는 함수
         function populateGradeFilter(trees) {
             const gradeContainer = document.getElementById('gradeFilterContainer');
             const uniqueGrades = [...new Set(trees.map(t => t.grade).filter(g => g))].sort();
@@ -261,16 +217,27 @@
             });
         }
         
-        // ⭐ 필터 및 정렬을 적용하는 메인 함수
         function applyFiltersAndSort() {
-            const getSelectedValues = (containerId) => Array.from(document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)).map(cb => cb.value);
+            const getSelectedValues = (containerId) => {
+                const container = document.getElementById(containerId);
+                const allCheckbox = container.querySelector('input[value="all"]');
+                const specificCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]:not([value="all"])'));
+
+                if (event && event.target.value === 'all' && event.target.checked) {
+                    specificCheckboxes.forEach(cb => cb.checked = false);
+                } else if (event && event.target.value !== 'all' && event.target.checked) {
+                    if(allCheckbox) allCheckbox.checked = false;
+                }
+                if (!specificCheckboxes.some(cb => cb.checked) && allCheckbox && !allCheckbox.checked) {
+                    allCheckbox.checked = true;
+                }
+                
+                if (allCheckbox && allCheckbox.checked) return [];
+                return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+            };
             
-            let selectedColors = getSelectedValues('colorFilterContainer');
-            if (selectedColors.includes('all')) selectedColors = [];
-            
-            let selectedGrades = getSelectedValues('gradeFilterContainer');
-            if (selectedGrades.includes('all')) selectedGrades = [];
-            
+            const selectedColors = getSelectedValues('colorFilterContainer');
+            const selectedGrades = getSelectedValues('gradeFilterContainer');
             const sortValue = document.getElementById('sortFilter').value;
 
             let filteredTrees = [...allSharedTrees];
@@ -293,15 +260,14 @@
             renderListAndMap(filteredTrees);
         }
 
-        // ⭐ 목록과 지도를 다시 그리는 함수
         function renderListAndMap(treesToRender) {
             const listContainer = document.getElementById('treeListContainer');
-            const listCountSpan = document.getElementById('listCount');
+            const listCountSpan = document.getElementById('treeListCount');
             listContainer.innerHTML = '';
             markers.forEach(marker => marker.setMap(null));
             markers = [];
 
-            listCountSpan.textContent = `(${treesToRender.length}개)`;
+            listCountSpan.textContent = `총 ${treesToRender.length}개의 대상목`;
             if (treesToRender.length === 0) {
                 listContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">표시할 수목이 없습니다.</div>';
                 return;
@@ -310,7 +276,6 @@
             const bounds = new kakao.maps.LatLngBounds();
 
             treesToRender.forEach(tree => {
-                // 지도에 마커 추가
                 if (typeof tree.lat === 'number' && typeof tree.lng === 'number') {
                     const position = new kakao.maps.LatLng(tree.lat, tree.lng);
                     const text = tree.number || '';
@@ -330,7 +295,6 @@
                     bounds.extend(position);
                 }
 
-                // 사이드바에 목록 아이템 추가
                 const listItem = document.createElement('div');
                 listItem.className = 'tree-list-item';
                 let detailsHtml = [];
@@ -341,8 +305,8 @@
                 listItem.innerHTML = `
                     <span class="color-dot" style="background-color: ${colorMap[tree.color] || '#aaaaaa'};"></span>
                     <div>
-                        <div><b>${tree.number || '번호없음'}</b> - ${tree.species || '수종미상'}</div>
-                        <div class="tree-details">${detailsHtml.join(' / ')}</div>
+                        <div class="tree-info-main"><b>${tree.number || '번호없음'}</b> - ${tree.species || '수종미상'}</div>
+                        <div class="tree-info-sub">${detailsHtml.join(' / ')}</div>
                     </div>
                 `;
                 listItem.addEventListener('click', () => map.panTo(new kakao.maps.LatLng(tree.lat, tree.lng)));
@@ -376,10 +340,6 @@
             } else {
                 showMessage("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
             }
-        }
-
-        function toggleSidebar() {
-            document.getElementById('treeSidebar').classList.toggle('visible');
         }
     </script>
 </body>

@@ -211,9 +211,8 @@
         }
     }
     
-    // ⭐⭐⭐ 디버깅 코드가 추가된 initMap 함수 ⭐⭐⭐
+    // ⭐⭐⭐ initMap 함수 수정됨 ⭐⭐⭐
     function initMap() {
-        console.log("[1] initMap 함수 시작");
         const container = document.getElementById('map');
         if(sharedTrees.length === 0) {
             container.innerHTML = "표시할 수목 데이터가 없습니다.";
@@ -221,47 +220,30 @@
         }
 
         const bounds = new kakao.maps.LatLngBounds();
-        console.log("[2] 'bounds' 객체 생성됨:", bounds);
+        let validPointsFound = 0; // 유효한 좌표가 있는지 확인하기 위한 변수
 
-        let validPointsFound = 0;
-
-        sharedTrees.forEach((tree, index) => {
-            console.log(`[3] Tree #${index} 데이터 확인:`, tree);
-            if (typeof tree.lat === 'number' && typeof tree.lng === 'number' && !isNaN(tree.lat) && !isNaN(tree.lng)) {
+        sharedTrees.forEach(tree => {
+            if(typeof tree.lat === 'number' && typeof tree.lng === 'number'){
                 bounds.extend(new kakao.maps.LatLng(tree.lat, tree.lng));
-                validPointsFound++;
-                console.log(`[4] 유효한 좌표 #${validPointsFound} 추가됨.`);
-            } else {
-                console.warn(`[5] Tree #${index}는 유효한 좌표가 없습니다.`);
+                validPointsFound++; // 유효한 좌표를 찾으면 카운트 증가
             }
         });
 
-        console.log("[6] 좌표 처리 후 'bounds' 객체:", bounds);
-        console.log("[7] 'bounds.getCenter'는 함수인가?", typeof bounds.getCenter);
-
         let options;
+        // 유효한 좌표가 하나라도 있을 경우에만 bounds 사용
         if (validPointsFound > 0) {
-            console.log("[8] 유효한 좌표가 있어 getCenter() 호출 시도.");
-            try {
-                options = { center: bounds.getCenter() };
-            } catch (e) {
-                console.error("[!!!] getCenter() 호출 중 에러 발생!", e);
-                // 에러 발생 시 fallback
-                options = { center: new kakao.maps.LatLng(37.5665, 126.9780), level: 8 };
-            }
+            options = { center: bounds.getCenter() };
         } else {
-            console.log("[9] 유효한 좌표가 없어 기본 위치로 설정.");
+            // 유효한 좌표가 하나도 없으면 기본 위치(서울시청)로 설정
             options = { center: new kakao.maps.LatLng(37.5665, 126.9780), level: 8 };
+            console.warn("공유된 데이터에 유효한 좌표가 없어 기본 위치를 표시합니다.");
         }
 
         map = new kakao.maps.Map(container, options);
 
+        // 유효한 좌표가 있을 경우에만 지도 범위를 재설정
         if (validPointsFound > 0) {
-            try {
-                map.setBounds(bounds);
-            } catch(e) {
-                 console.error("[!!!] setBounds() 호출 중 에러 발생!", e);
-            }
+            map.setBounds(bounds);
         }
         
         setupEventListeners();

@@ -192,11 +192,11 @@
             const docRef = db.collection("shares").doc(shareId);
             const docSnap = await docRef.get();
 
-            if (docSnap.exists()) {
+            // ⭐⭐⭐ 수정된 부분 ⭐⭐⭐
+            if (docSnap.exists) { // .exists() 에서 괄호()를 삭제했습니다.
                 const data = docSnap.data();
                 sharedTrees = data.trees || [];
                 
-                // --- 제목 설정 ---
                 const title = data.title || "공유된 수목 위치";
                 document.title = title;
                 document.getElementById('sharedListTitle').textContent = title;

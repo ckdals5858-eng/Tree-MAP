@@ -88,17 +88,43 @@
             transform: rotate(180deg);
         }
         
+        /* ⭐ 필터 영역 스타일 추가 */
+        .filters {
+            padding: 10px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .filter-group {
+            display: flex;
+            flex-wrap: wrap; /* 이제 여러 줄로 표시될 수 있음 */
+            gap: 4px 8px;
+            align-items: center;
+            font-size: 11px;
+            width: 100%;
+        }
+        .filter-group .filter-title { font-weight: bold; font-size: 12px; margin-right: 5px; white-space: nowrap; }
+        .filter-group label {
+            display: flex; align-items: center; gap: 3px; cursor: pointer;
+            padding: 2px 4px; border-radius: 3px; transition: background-color 0.2s; white-space: nowrap;
+        }
+        .filter-group label:hover { background-color: #e9ecef; }
+        .filter-group input[type="checkbox"] { margin: 0; transform: scale(0.9); }
+        .filters #sortFilter { font-size: 12px; padding: 4px; border-radius: 4px; border: 1px solid #ccc; }
+
         #treeListContainer {
             overflow-y: auto;
             flex-grow: 1;
         }
         .tree-list-item {
             display: flex;
-            align-items: center;
             padding: 12px 15px;
             border-bottom: 1px solid #f0f0f0;
             cursor: pointer;
             transition: background-color 0.2s;
+            align-items: flex-start;
         }
         .tree-list-item:hover {
             background-color: #f5f5f5;
@@ -109,6 +135,12 @@
             border-radius: 50%;
             margin-right: 12px;
             flex-shrink: 0;
+            margin-top: 3px;
+        }
+        .tree-details {
+             font-size: 11px;
+             color: #666;
+             margin-top: 4px;
         }
     </style>
 </head>
@@ -120,8 +152,34 @@
 
     <button id="toggleListBtn">☰</button>
     <div id="treeSidebar">
+        <details id="filterDetails">
+            <summary>필터 및 정렬</summary>
+            <div class="filters">
+                <div id="colorFilterContainer" class="filter-group">
+                    <span class="filter-title">색상:</span>
+                    <label><input type="checkbox" name="color" value="all" checked> 전체</label>
+                    <label><input type="checkbox" name="color" value="green"> 초록</label>
+                    <label><input type="checkbox" name="color" value="blue"> 파랑</label>
+                    <label><input type="checkbox" name="color" value="orange"> 주황</label>
+                    <label><input type="checkbox" name="color" value="gray"> 회색</label>
+                    <label><input type="checkbox" name="color" value="red"> 빨강</label>
+                </div>
+                <div id="gradeFilterContainer" class="filter-group">
+                    <span class="filter-title">등급:</span>
+                    <label><input type="checkbox" name="grade" value="all" checked> 전체</label>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-title">정렬:</span>
+                    <select id="sortFilter">
+                        <option value="number_asc">번호 오름차순</option>
+                        <option value="number_desc">번호 내림차순</option>
+                    </select>
+                </div>
+            </div>
+        </details>
+
         <details open>
-            <summary>공유 목록</summary>
+            <summary>공유 목록 <span id="listCount" style="font-weight: normal; font-size: 14px;"></span></summary>
             <div id="treeListContainer"></div>
         </details>
     </div>
@@ -142,11 +200,19 @@
 
         let map;
         let myLocationMarker = null;
+        let markers = []; // ⭐ 마커 배열을 전역으로 이동
+        let allSharedTrees = []; // ⭐ 전체 수목 데이터를 저장할 배열
 
         document.addEventListener('DOMContentLoaded', () => {
             kakao.maps.load(loadSharedMap);
             document.getElementById('myLocationBtn').addEventListener('click', showMyLocation);
             document.getElementById('toggleListBtn').addEventListener('click', toggleSidebar);
+
+            // ⭐ 필터와 정렬에 이벤트 리스너 추가
+            document.querySelectorAll('#colorFilterContainer input, #gradeFilterContainer input').forEach(el => {
+                el.addEventListener('change', applyFiltersAndSort);
+            });
+            document.getElementById('sortFilter').addEventListener('change', applyFiltersAndSort);
         });
 
         function showMessage(text) {
@@ -159,81 +225,22 @@
         async function loadSharedMap() {
             const urlParams = new URLSearchParams(window.location.search);
             const shareId = urlParams.get('id');
-
-            if (!shareId) {
-                return showMessage('유효하지 않은 공유 링크입니다.');
-            }
+            if (!shareId) return showMessage('유효하지 않은 공유 링크입니다.');
 
             try {
                 const docRef = db.collection('shares').doc(shareId);
                 const docSnap = await docRef.get();
+                if (!docSnap.exists) return showMessage('공유 데이터를 찾을 수 없거나 삭제되었습니다.');
 
-                if (!docSnap.exists) {
-                    return showMessage('공유 데이터를 찾을 수 없거나 삭제되었습니다.');
-                }
-
-                const sharedData = docSnap.data();
-                const trees = sharedData.trees || [];
-
-                if (trees.length === 0) {
-                    return showMessage('공유된 수목이 없습니다.');
-                }
+                allSharedTrees = docSnap.data().trees || [];
+                if (allSharedTrees.length === 0) return showMessage('공유된 수목이 없습니다.');
 
                 const mapContainer = document.getElementById('map');
-                const mapOption = {
-                    center: new kakao.maps.LatLng(trees[0].lat, trees[0].lng),
-                    level: 5
-                };
-                map = new kakao.maps.Map(mapContainer, mapOption); 
-                const bounds = new kakao.maps.LatLngBounds();
+                const mapOption = { center: new kakao.maps.LatLng(allSharedTrees[0].lat, allSharedTrees[0].lng), level: 5 };
+                map = new kakao.maps.Map(mapContainer, mapOption);
 
-                const listContainer = document.getElementById('treeListContainer');
-                listContainer.innerHTML = '';
-
-                trees.forEach(tree => {
-                    if (typeof tree.lat === 'number' && typeof tree.lng === 'number') {
-                        const position = new kakao.maps.LatLng(tree.lat, tree.lng);
-                        const text = tree.number || '';
-                        
-                        let textWidth = 0;
-                        for (let i = 0; i < text.length; i++) {
-                            const char = text.charCodeAt(i);
-                            textWidth += (char >= 0xAC00 && char <= 0xD7A3) ? 9 : 4.8;
-                        }
-                        const padding = 12;
-                        const svgWidth = Math.max(18, textWidth + padding);
-                        const svgHeight = 23, rectHeight = 16, rectRadius = 8, pointerWidth = 5, fontSize = 10, textY = 13;
-                        
-                        const svgString = `
-                          <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">
-                              <rect x="1" y="1" width="${svgWidth - 2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
-                              <path d="M ${svgWidth/2 - pointerWidth} ${rectHeight} L ${svgWidth/2} ${svgHeight} L ${svgWidth/2 + pointerWidth} ${rectHeight} Z" fill="${colorMap[tree.color] || colorMap.gray}"/>
-                              <text x="${svgWidth/2}" y="${textY}" font-size="${fontSize}" font-weight="bold" text-anchor="middle" fill="white">${text}</text>
-                          </svg>`;
-
-                        const imageSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
-                        const imageSize = new kakao.maps.Size(svgWidth, svgHeight);
-                        const imageOption = { offset: new kakao.maps.Point(svgWidth / 2, svgHeight) };
-                        const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
-                        const marker = new kakao.maps.Marker({ position, image: markerImage });
-
-                        marker.setMap(map);
-                        bounds.extend(position);
-                    }
-
-                    const listItem = document.createElement('div');
-                    listItem.className = 'tree-list-item';
-                    listItem.innerHTML = `
-                        <span class="color-dot" style="background-color: ${colorMap[tree.color] || '#aaaaaa'};"></span>
-                        <span>${tree.number || '번호없음'} - ${tree.species || '수종미상'}</span>
-                    `;
-                    listItem.addEventListener('click', () => {
-                        map.panTo(new kakao.maps.LatLng(tree.lat, tree.lng));
-                    });
-                    listContainer.appendChild(listItem);
-                });
-
-                map.setBounds(bounds);
+                populateGradeFilter(allSharedTrees); // ⭐ 등급 필터 동적 생성
+                applyFiltersAndSort(); // ⭐ 필터 적용 및 렌더링 시작
 
             } catch (error) {
                 console.error("Error loading shared data:", error);
@@ -241,40 +248,128 @@
             }
         }
         
-        function showMyLocation() {
-            if (!map) return showMessage("지도가 로드될 때까지 잠시만 기다려주세요.");
+        // ⭐ 등급 필터 옵션을 동적으로 생성하는 함수
+        function populateGradeFilter(trees) {
+            const gradeContainer = document.getElementById('gradeFilterContainer');
+            const uniqueGrades = [...new Set(trees.map(t => t.grade).filter(g => g))].sort();
+            
+            uniqueGrades.forEach(grade => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" name="grade" value="${grade}"> ${grade}`;
+                label.addEventListener('change', applyFiltersAndSort);
+                gradeContainer.appendChild(label);
+            });
+        }
+        
+        // ⭐ 필터 및 정렬을 적용하는 메인 함수
+        function applyFiltersAndSort() {
+            const getSelectedValues = (containerId) => Array.from(document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)).map(cb => cb.value);
+            
+            let selectedColors = getSelectedValues('colorFilterContainer');
+            if (selectedColors.includes('all')) selectedColors = [];
+            
+            let selectedGrades = getSelectedValues('gradeFilterContainer');
+            if (selectedGrades.includes('all')) selectedGrades = [];
+            
+            const sortValue = document.getElementById('sortFilter').value;
 
-            if (location.protocol !== 'https:') {
-                return showMessage('보안(HTTPS) 연결에서만 위치 정보를 사용할 수 있습니다.');
+            let filteredTrees = [...allSharedTrees];
+
+            if (selectedColors.length > 0) {
+                filteredTrees = filteredTrees.filter(tree => selectedColors.includes(tree.color));
+            }
+            if (selectedGrades.length > 0) {
+                filteredTrees = filteredTrees.filter(tree => selectedGrades.includes(String(tree.grade)));
             }
 
+            filteredTrees.sort((a, b) => {
+                const numA = String(a.number);
+                const numB = String(b.number);
+                return sortValue === 'number_desc' 
+                    ? numB.localeCompare(numA, undefined, {numeric: true}) 
+                    : numA.localeCompare(numB, undefined, {numeric: true});
+            });
+
+            renderListAndMap(filteredTrees);
+        }
+
+        // ⭐ 목록과 지도를 다시 그리는 함수
+        function renderListAndMap(treesToRender) {
+            const listContainer = document.getElementById('treeListContainer');
+            const listCountSpan = document.getElementById('listCount');
+            listContainer.innerHTML = '';
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+
+            listCountSpan.textContent = `(${treesToRender.length}개)`;
+            if (treesToRender.length === 0) {
+                listContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">표시할 수목이 없습니다.</div>';
+                return;
+            }
+
+            const bounds = new kakao.maps.LatLngBounds();
+
+            treesToRender.forEach(tree => {
+                // 지도에 마커 추가
+                if (typeof tree.lat === 'number' && typeof tree.lng === 'number') {
+                    const position = new kakao.maps.LatLng(tree.lat, tree.lng);
+                    const text = tree.number || '';
+                    let textWidth = 0;
+                    for (let i = 0; i < text.length; i++) {
+                        textWidth += (text.charCodeAt(i) >= 0xAC00 && text.charCodeAt(i) <= 0xD7A3) ? 9 : 4.8;
+                    }
+                    const padding = 12;
+                    const svgWidth = Math.max(18, textWidth + padding);
+                    const svgHeight = 23, rectHeight = 16, rectRadius = 8, pointerWidth = 5, fontSize = 10, textY = 13;
+                    const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}"><rect x="1" y="1" width="${svgWidth-2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)"/><path d="M ${svgWidth/2-pointerWidth} ${rectHeight} L ${svgWidth/2} ${svgHeight} L ${svgWidth/2+pointerWidth} ${rectHeight} Z" fill="${colorMap[tree.color]||colorMap.gray}"/><text x="${svgWidth/2}" y="${textY}" font-size="${fontSize}" font-weight="bold" text-anchor="middle" fill="white">${text}</text></svg>`;
+                    const imageSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
+                    const markerImage = new kakao.maps.MarkerImage(imageSrc, new kakao.maps.Size(svgWidth, svgHeight), {offset: new kakao.maps.Point(svgWidth/2, svgHeight)});
+                    const marker = new kakao.maps.Marker({ position, image: markerImage });
+                    marker.setMap(map);
+                    markers.push(marker);
+                    bounds.extend(position);
+                }
+
+                // 사이드바에 목록 아이템 추가
+                const listItem = document.createElement('div');
+                listItem.className = 'tree-list-item';
+                let detailsHtml = [];
+                if (tree.grade) detailsHtml.push(`등급:${tree.grade}`);
+                if (tree.diameter) detailsHtml.push(`흉고:${tree.diameter}cm`);
+                if (tree.height) detailsHtml.push(`수고:${tree.height}m`);
+                
+                listItem.innerHTML = `
+                    <span class="color-dot" style="background-color: ${colorMap[tree.color] || '#aaaaaa'};"></span>
+                    <div>
+                        <div><b>${tree.number || '번호없음'}</b> - ${tree.species || '수종미상'}</div>
+                        <div class="tree-details">${detailsHtml.join(' / ')}</div>
+                    </div>
+                `;
+                listItem.addEventListener('click', () => map.panTo(new kakao.maps.LatLng(tree.lat, tree.lng)));
+                listContainer.appendChild(listItem);
+            });
+
+            if (!bounds.isEmpty()) {
+                map.setBounds(bounds);
+            }
+        }
+        
+        function showMyLocation() {
+            if (!map) return showMessage("지도가 로드될 때까지 잠시만 기다려주세요.");
+            if (location.protocol !== 'https:') return showMessage('보안(HTTPS) 연결에서만 위치 정보를 사용할 수 있습니다.');
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         const locPosition = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
-                        
                         if (myLocationMarker) myLocationMarker.setMap(null);
-
-                        myLocationMarker = new kakao.maps.Marker({ 
-                            map: map, 
-                            position: locPosition, 
-                            image: new kakao.maps.MarkerImage(`data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#007bff" fill-opacity="0.3"/><circle cx="12" cy="12" r="6" fill="#007bff" stroke="white" stroke-width="2"/></svg>')}`, new kakao.maps.Size(24, 24)) 
-                        });
+                        myLocationMarker = new kakao.maps.Marker({ map, position: locPosition, image: new kakao.maps.MarkerImage(`data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#007bff" fill-opacity="0.3"/><circle cx="12" cy="12" r="6" fill="#007bff" stroke="white" stroke-width="2"/></svg>')}`, new kakao.maps.Size(24, 24)) });
                         map.panTo(locPosition);
                     },
                     (error) => {
                         let errorMessage = "위치 정보를 가져올 수 없습니다.";
-                        switch (error.code) {
-                            case error.PERMISSION_DENIED:
-                                errorMessage = "위치 정보 권한이 차단되었습니다.\n브라우저 설정을 확인해주세요.";
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                errorMessage = "현재 위치를 찾을 수 없습니다.";
-                                break;
-                            case error.TIMEOUT:
-                                errorMessage = "시간이 초과되었습니다.";
-                                break;
-                        }
+                        if (error.code === error.PERMISSION_DENIED) errorMessage = "위치 정보 권한이 차단되었습니다.\n브라우저 설정을 확인해주세요.";
+                        else if (error.code === error.POSITION_UNAVAILABLE) errorMessage = "현재 위치를 찾을 수 없습니다.";
+                        else if (error.code === error.TIMEOUT) errorMessage = "시간이 초과되었습니다.";
                         showMessage(errorMessage);
                     }
                 );

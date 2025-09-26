@@ -596,27 +596,32 @@
         <div class="modal-content" style="max-width: 450px;">
             <h4 style="text-align: center;">공유 링크 생성 완료</h4>
             <p style="margin: 15px 0; font-size: 13px; color: #555; text-align: center;">
-                목적에 맞는 링크를 복사하여 공유하세요.
+                아래 링크를 복사하여 공유하세요.
             </p>
             <div class="form-group">
                 <label style="font-size: 13px; margin-bottom: 5px;">
-                    <b>1. 웹 지도 링크</b> <small>(PC/모바일 보기용)</small>
+                    <b>웹 지도 링크</b> <small>(PC/모바일 보기용)</small>
                 </label>
                 <div style="display: flex; gap: 5px;">
                     <input type="text" id="shareWebViewLinkInput" style="flex: 1; padding: 8px; font-size: 12px;" readonly>
                     <button id="copyWebViewLinkBtn" class="btn" style="flex: 0;">복사</button>
                 </div>
             </div>
-            <div class="form-group" style="margin-top: 20px;">
-                <label style="font-size: 13px; margin-bottom: 5px;">
-                    <b>2. 카카오맵 앱 링크</b> <small>(모바일 길찾기용)</small>
-                </label>
-                <div style="display: flex; gap: 5px;">
-                    <input type="text" id="shareAppUrlInput" style="flex: 1; padding: 8px; font-size: 12px;" readonly>
-                    <button id="copyAppUrlBtn" class="btn" style="flex: 0;">복사</button>
-                </div>
-            </div>
             <button class="btn btn-secondary" style="width: 100%; margin-top: 20px;" onclick="closeModalById('shareLinkModal')">닫기</button>
+        </div>
+    </div>
+    
+    <div id="shareTitleModal" class="modal">
+        <div class="modal-content" style="max-width: 350px;">
+            <h4>공유 링크 제목 입력</h4>
+            <div class="form-group" style="margin-top: 15px;">
+                <label>제목</label>
+                <input type="text" id="shareTitleInput" placeholder="예: OO아파트 1단지 현장" required>
+            </div>
+            <div style="text-align: right; margin-top: 20px; display: flex; gap: 5px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModalById('shareTitleModal')">취소</button>
+                <button type="button" id="confirmShareBtn" class="btn">링크 생성</button>
+            </div>
         </div>
     </div>
 
@@ -646,6 +651,7 @@
     let appMode = 'normal';
     let activeTreeData = null;
     let listMode = 'normal'; // 'normal', 'move', 'delete', 'share'
+    let idsToShare = [];
     let openFolderIds = []; // To track open folders
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -801,7 +807,7 @@
         });
         
         document.getElementById('copyWebViewLinkBtn').addEventListener('click', () => copyToClipboard('shareWebViewLinkInput'));
-        document.getElementById('copyAppUrlBtn').addEventListener('click', () => copyToClipboard('shareAppUrlInput'));
+        document.getElementById('confirmShareBtn').addEventListener('click', handleShareTitleSubmit);
     }
 
     function toggleControls() {
@@ -1167,12 +1173,19 @@
         }
 
         if (navigator.geolocation) {
+            const myLocationBtn = document.getElementById('myLocationBtn');
+            const originalText = myLocationBtn.textContent;
+            myLocationBtn.textContent = '위치 찾는 중...';
+            myLocationBtn.disabled = true;
+
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const locPosition = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
                     if (myLocationMarker) myLocationMarker.setMap(null);
                     myLocationMarker = new kakao.maps.Marker({ map, position: locPosition, image: new kakao.maps.MarkerImage(`data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#007bff" fill-opacity="0.3"/><circle cx="12" cy="12" r="6" fill="#007bff" stroke="white" stroke-width="2"/></svg>')}`, new kakao.maps.Size(24, 24)) });
                     map.setCenter(locPosition);
+                    myLocationBtn.textContent = originalText;
+                    myLocationBtn.disabled = false;
                 },
                 (error) => {
                     let errorMessage = "위치 정보를 가져올 수 없습니다.";
@@ -1187,7 +1200,14 @@
                             errorMessage = "위치를 가져오는 데 시간이 초과되었습니다.";
                             break;
                     }
+                    myLocationBtn.textContent = originalText;
+                    myLocationBtn.disabled = false;
                     showCustomAlert(errorMessage);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 8000,
+                    maximumAge: 0
                 }
             );
         } else {
@@ -1349,8 +1369,49 @@
                 deleteSelectedTrees(selectedIds);
             }
         } else if (listMode === 'share') {
-            generateShareLink(selectedIds);
+            idsToShare = selectedIds;
+            document.getElementById('shareTitleInput').value = ''; 
+            openModalById('shareTitleModal');
         }
+    }
+
+    function handleShareTitleSubmit() {
+        const title = document.getElementById('shareTitleInput').value.trim();
+        if (!title) {
+            return showCustomAlert('공유 제목을 입력해주세요.');
+        }
+        closeModalById('shareTitleModal');
+        generateShareLink(idsToShare, title);
+    }
+
+    async function generateShareLink(ids, title) {
+        if (!currentUser) return showCustomAlert("로그인이 필요합니다.");
+        const treesToShare = ids.map(id => {
+            const tree = trees.find(t => t.id === id);
+            return {
+                lat: tree.lat, lng: tree.lng, number: tree.number,
+                species: tree.species, color: tree.color,
+                grade: tree.grade, diameter: tree.diameter, height: tree.height
+            };
+        });
+        try {
+            const shareRef = db.collection('shares').doc();
+            await shareRef.set({
+                trees: treesToShare,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                creator: currentUser.uid,
+                title: title
+            });
+            const shareId = shareRef.id;
+            const webViewUrl = `${window.location.origin}${window.location.pathname.replace('index.html', '')}share.html?id=${shareId}`;
+            document.getElementById('shareWebViewLinkInput').value = webViewUrl;
+        } catch (error) {
+            console.error("웹 공유 링크 생성 실패:", error);
+            document.getElementById('shareWebViewLinkInput').value = "생성 실패";
+        }
+        
+        openModalById('shareLinkModal');
+        toggleListMode('normal');
     }
 
     function toggleSelectAll(event) {
@@ -1444,59 +1505,6 @@
         sidebar.classList.toggle('collapsed');
         btn.textContent = sidebar.classList.contains('collapsed') ? '◀' : '▶';
         setTimeout(() => map && map.relayout(), 310);
-    }
-
-    // ⭐ generateShareLink 함수 수정: 공유할 때 등급, 규격 정보 추가
-    async function generateShareLink(ids) {
-        if (!currentUser) return showCustomAlert("로그인이 필요합니다.");
-        const treesToShare = ids.map(id => {
-            const tree = trees.find(t => t.id === id);
-            return {
-                lat: tree.lat, lng: tree.lng, number: tree.number,
-                species: tree.species, color: tree.color,
-                grade: tree.grade, diameter: tree.diameter, height: tree.height // ⭐ 추가된 정보
-            };
-        });
-        try {
-            const shareRef = db.collection('shares').doc();
-            await shareRef.set({
-                trees: treesToShare,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                creator: currentUser.uid
-            });
-            const shareId = shareRef.id;
-            const webViewUrl = `${window.location.origin}/Tree-MAP/share.html?id=${shareId}`;
-            document.getElementById('shareWebViewLinkInput').value = webViewUrl;
-        } catch (error) {
-            console.error("웹 공유 링크 생성 실패:", error);
-            document.getElementById('shareWebViewLinkInput').value = "생성 실패";
-        }
-        let kakaoMapUrl = '';
-        if (ids.length === 1) {
-            const tree = treesToShare[0];
-            const name = `${tree.number} - ${tree.species || '수목'}`;
-            kakaoMapUrl = `https://map.kakao.com/link/map/${encodeURIComponent(name)},${tree.lat},${tree.lng}`;
-        } else if (ids.length > 1) {
-            const startPoint = treesToShare[0];
-            const endPoint = treesToShare[treesToShare.length - 1];
-            const viaPoints = treesToShare.slice(1, -1);
-            const formatPoint = (p) => `${encodeURIComponent(p.number || '지점')},${p.lat},${p.lng}`;
-            
-            const params = new URLSearchParams();
-            params.append('sp', `${startPoint.lat},${startPoint.lng}`);
-            params.append('ep', `${endPoint.lat},${endPoint.lng}`);
-            params.append('by', 'CAR');
-
-            if (viaPoints.length > 0) {
-                const viaList = viaPoints.map(formatPoint).join('|');
-                params.append('via', viaList);
-            }
-            kakaoMapUrl = `https://map.kakao.com/link/route?${params.toString()}`;
-        }
-        document.getElementById('shareAppUrlInput').value = kakaoMapUrl || '생성 불가';
-        
-        openModalById('shareLinkModal');
-        toggleListMode('normal');
     }
 
     function copyToClipboard(inputId) {

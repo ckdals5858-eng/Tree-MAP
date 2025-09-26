@@ -2,427 +2,384 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>공유된 수목 위치</title>
-    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c271d3d7aa3cd2e6702892fa92c3b313&autoload=false"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=5.0">
+    <title>공유된 수목 위치</title> 
+    <meta property="og:title" content="공유된 수목 위치 정보입니다." />
+    <meta property="og:description" content="지도를 통해 수목의 위치를 확인하세요." />
+
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c271d3d7aa3cd2e6702892fa92c3b313&libraries=services&autoload=false"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
         :root { --tree-sidebar-width: 300px; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { height: 100%; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; overflow: hidden; position: relative; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 14px; }
         .container { display: flex; height: 100%; }
         .main-content { flex: 1; position: relative; }
         #map { width: 100%; height: 100%; }
-        #message { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 8px; z-index: 2000;}
-        
-        #myLocationBtn {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            z-index: 10;
-            padding: 8px 12px;
-            background-color: white;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-
-        /* ⭐ 지도 타입 선택 버튼 스타일 추가 */
-        .map-controls {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            z-index: 10;
-            display: flex;
-            gap: 5px;
-            background: white;
-            padding: 5px;
-            border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .map-type-btn {
-            padding: 6px 10px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-            background-color: white;
-        }
-        .map-type-btn.active {
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-
-        .sidebar-toggle-btn {
-            position: absolute; top: 50%; transform: translateY(-50%); z-index: 2500;
-            background-color: #2c3e50; color: white; border: 1px solid #fff;
-            width: 25px; height: 50px; cursor: pointer; font-size: 16px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 1px 0 5px rgba(0,0,0,0.2);
-            right: 5px; border-radius: 5px 0 0 5px;
-        }
-
         .tree-sidebar {
             width: var(--tree-sidebar-width); background: #f8f9fa; border-left: 1px solid #e9ecef;
-            display: flex; flex-direction: column; transition: width 0.3s ease, min-width 0.3s ease;
-            flex-shrink: 0;
+            display: flex; flex-direction: column; transition: transform 0.3s ease, width 0.3s ease, min-width 0.3s ease; z-index: 3000;
         }
-        .tree-sidebar.collapsed {
-            width: 0; min-width: 0; overflow: hidden; border: none;
+        .tree-sidebar.collapsed { width: 0; min-width: 0; overflow: hidden; border: none; padding: 0;}
+        .tree-section { overflow-y: auto; flex: 1; }
+        .tree-list { padding: 10px; }
+        .group-item {
+            padding: 5px 7px; margin: 1px 0; background: white; border: 1px solid #dee2e6; border-radius: 4px; 
+            font-size: 10px; cursor: pointer; display: flex; align-items: flex-start; gap: 8px;
         }
-
-        .tree-sidebar h3 {
-            padding: 15px; margin: 0; font-size: 18px; background: #f1f3f5;
-            border-bottom: 1px solid #e9ecef; flex-shrink: 0;
-        }
-        .filters {
-            padding: 10px; background: #f8f9fa; border-bottom: 1px solid #e9ecef;
-            display: flex; flex-direction: column; gap: 8px;
-        }
-        .filter-group {
-            display: flex; flex-wrap: nowrap; overflow-x: auto;
-            gap: 4px 8px; align-items: center; font-size: 11px; width: 100%; padding-bottom: 5px;
-        }
+        .small-text { font-size: 9px; color: #6c757d; line-height: 1.3; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .btn { padding: 8px 12px; border: none; border-radius: 3px; cursor: pointer; font-size: 13px; background: #007bff; color: white; }
+        .btn-secondary { background: #6c757d; }
+        .modal { display: none; position: fixed; z-index: 5000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background-color: white; margin: auto; padding: 20px; border-radius: 5px; width: 95%; max-width: 320px; text-align: center; }
+        .filters { padding: 10px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+        .filter-group { display: flex; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 5px; gap: 4px 8px; align-items: center; font-size: 11px; width: 100%; }
         .filter-group .filter-title { font-weight: bold; font-size: 12px; margin-right: 5px; white-space: nowrap; }
-        .filter-group label {
-            display: flex; align-items: center; gap: 3px; cursor: pointer;
-            padding: 2px 4px; border-radius: 3px; white-space: nowrap;
-        }
+        .filter-group label { display: flex; align-items: center; gap: 3px; cursor: pointer; padding: 2px 4px; border-radius: 3px; transition: background-color 0.2s; white-space: nowrap; }
         .filter-group label:hover { background-color: #e9ecef; }
         .filter-group input[type="checkbox"] { margin: 0; transform: scale(0.9); }
-        .filters #sortFilter { font-size: 12px; padding: 4px; border-radius: 4px; border: 1px solid #ccc; }
+        .filters #sortFilter { font-size: 12px; padding: 4px; }
+        .controls-container { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 8px; }
+        .map-controls { display: flex; gap: 5px; }
+        .map-type-btn { padding: 6px 10px; border: 1px solid #ddd; border-radius: 3px; cursor: pointer; font-size: 12px; }
+        .map-type-btn.active { background: #007bff; color: white; border-color: #007bff; }
+        .sidebar-toggle-btn {
+            position: absolute; top: 50%; right: var(--tree-sidebar-width); transform: translateY(-50%); z-index: 2500;
+            background-color: #2c3e50; color: white; border: 1px solid #fff; width: 25px; height: 50px;
+            border-radius: 5px 0 0 5px; cursor: pointer; font-size: 16px; display: flex;
+            align-items: center; justify-content: center; transition: right 0.3s ease; box-shadow: -1px 0 5px rgba(0,0,0,0.2);
+        }
+        .tree-sidebar.collapsed + .sidebar-toggle-btn { right: 0; }
+        .mobile-controls { display: none; }
+        .backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 2900; }
         
-        #treeListInfo { padding: 8px 12px; font-size: 12px; color: #333; background: #f1f3f5; border-bottom: 1px solid #e9ecef; }
-        #treeList { overflow-y: auto; flex-grow: 1; }
-
-        .group-item {
-            padding: 10px 12px; border-bottom: 1px solid #e9ecef; cursor: pointer;
-            background-color: white; transition: background-color 0.2s;
-            display: flex; align-items: flex-start;
+        @media (max-width: 1024px) {
+            :root { --tree-sidebar-width: 280px; }
+            .tree-sidebar { position: fixed; top: 52px; right: 0; height: calc(100% - 52px); transform: translateX(var(--tree-sidebar-width)); box-shadow: -2px 0 10px rgba(0,0,0,0.1); border-left: none; }
+            .tree-sidebar.visible { transform: translateX(0); }
+            .sidebar-toggle-btn { display: none; }
+            .controls-container { top: 62px; }
+            .mobile-controls {
+                position: fixed; top: 0; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: center;
+                background: #2c3e50; color: white; padding: 10px; z-index: 4000; height: 52px;
+            }
+            .mobile-btn { background: none; border: 1px solid white; color: white; padding: 8px 12px; border-radius: 4px; font-size: 13px; }
         }
-        .group-item:hover { background-color: #e9f5ff; }
-        .color-dot {
-            width: 12px; height: 12px; border-radius: 50%;
-            margin-right: 12px; flex-shrink: 0; margin-top: 3px;
-        }
-        .small-text { font-size: 11px; color: #6c757d; line-height: 1.4; margin-top: 4px; }
-
-        @media (max-width: 768px) {
-             #toggle-right-sidebar-desktop { display: none; }
-             .tree-sidebar {
-                 position: fixed; top: 0; right: 0; height: 100%; z-index: 4000;
-                 transform: translateX(100%); box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-             }
-             .tree-sidebar.visible { transform: translateX(0); }
-             #myLocationBtn { left: 15px; bottom: 15px; }
-             .mobile-list-toggle {
-                 display: block; position: absolute; top: 15px; right: 15px; z-index: 10;
-                 width: 40px; height: 40px; background-color: white; border: 1px solid #ccc;
-                 border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold;
-                 box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-             }
-             .backdrop {
-                display: none; position: fixed; top: 0; left: 0; width: 100%;
-                height: 100%; background: rgba(0,0,0,0.4); z-index: 3900;
-             }
-        }
-        @media (min-width: 769px) { .mobile-list-toggle { display: none; } }
     </style>
 </head>
 <body>
+    <div class="mobile-controls">
+        <div id="mobile-title" style="font-weight: bold; font-size: 16px;">공유된 지도</div>
+        <button id="toggleRightSidebarBtn" class="mobile-btn">목록 ☰</button>
+    </div>
+    <div class="backdrop" id="backdrop"></div>
+
     <div class="container">
         <div class="main-content">
             <div id="map"></div>
-            <div class="map-controls">
-                <button id="roadmapBtn" class="map-type-btn active">일반지도</button>
-                <button id="satelliteBtn" class="map-type-btn">위성사진</button>
+             <div class="controls-container">
+                <div class="map-controls">
+                    <button id="roadmapBtn" class="map-type-btn active">일반지도</button>
+                    <button id="satelliteBtn" class="map-type-btn">위성사진</button>
+                </div>
+                <button id="myLocationBtn" class="btn btn-secondary" style="font-size: 12px;">내 위치 보기</button>
             </div>
-            <button id="myLocationBtn">내 위치</button>
-            <button id="toggle-right-sidebar-desktop" class="sidebar-toggle-btn">▶</button>
-            <button class="mobile-list-toggle">☰</button>
         </div>
-        <div id="message" style="display: none;"></div>
-        <div class="backdrop"></div>
-    
+
         <div class="tree-sidebar" id="right-sidebar">
-            <h3>공유된 수목 리스트</h3>
-            <div class="filters">
-                <div id="colorFilterContainer" class="filter-group">
-                    <span class="filter-title">색상:</span>
-                    <label><input type="checkbox" name="color" value="all" checked> 전체</label>
-                    <label><input type="checkbox" name="color" value="green"> 초록</label>
-                    <label><input type="checkbox" name="color" value="blue"> 파랑</label>
-                    <label><input type="checkbox" name="color" value="orange"> 주황</label>
-                    <label><input type="checkbox" name="color" value="gray"> 회색</label>
-                    <label><input type="checkbox" name="color" value="red"> 빨강</label>
+            <h3 id="sharedListTitle" style="padding: 15px; background: #f1f3f5; border-bottom: 1px solid #e9ecef; font-size: 16px; min-height: 57px;">공유된 수목 위치</h3>
+            <div class="tree-section">
+                <div class="filters">
+                    <div id="colorFilterContainer" class="filter-group">
+                        <span class="filter-title">색상:</span>
+                        <label><input type="checkbox" name="color" value="all" checked> 전체</label>
+                        <label><input type="checkbox" name="color" value="green"> 초록</label>
+                        <label><input type="checkbox" name="color" value="blue"> 파랑</label>
+                        <label><input type="checkbox" name="color" value="orange"> 주황</label>
+                        <label><input type="checkbox" name="color" value="gray"> 회색</label>
+                        <label><input type="checkbox" name="color" value="red"> 빨강</label>
+                    </div>
+                    <div id="gradeFilterContainer" class="filter-group">
+                        <span class="filter-title">등급:</span>
+                        <label><input type="checkbox" name="grade" value="all" checked> 전체</label>
+                        <label><input type="checkbox" name="grade" value="1"> 1</label>
+                        <label><input type="checkbox" name="grade" value="2"> 2</label>
+                        <label><input type="checkbox" name="grade" value="3"> 3</label>
+                        <label><input type="checkbox" name="grade" value="4"> 4</label>
+                        <label><input type="checkbox" name="grade" value="5"> 5</label>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-title">정렬:</span>
+                        <select id="sortFilter">
+                            <option value="number_asc">번호 오름차순</option>
+                            <option value="number_desc">번호 내림차순</option>
+                        </select>
+                    </div>
                 </div>
-                <div id="gradeFilterContainer" class="filter-group">
-                    <span class="filter-title">등급:</span>
-                    <label><input type="checkbox" name="grade" value="all" checked> 전체</label>
-                </div>
-                <div class="filter-group">
-                    <span class="filter-title">정렬:</span>
-                    <select id="sortFilter">
-                        <option value="number_asc">번호 오름차순</option>
-                        <option value="number_desc">번호 내림차순</option>
-                    </select>
-                </div>
+                <div id="treeListInfo" style="padding: 8px 12px; font-size: 12px; color: #333; background: #f1f3f5; border-bottom: 1px solid #e9ecef;"></div>
+                <div class="tree-list" id="treeList"></div>
             </div>
-            <div id="treeListInfo">
-                <span id="treeListCount"></span>
-            </div>
-            <div id="treeList"></div>
+        </div>
+        <button id="toggle-sidebar-btn" class="sidebar-toggle-btn">▶</button>
+    </div>
+
+    <div id="custom-alert-modal" class="modal">
+        <div class="modal-content">
+            <p id="custom-alert-message" style="margin-bottom: 20px; line-height: 1.6;"></p>
+            <button id="custom-alert-ok-btn" class="btn" style="width: 100%;">확인</button>
         </div>
     </div>
 
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyBw6TBu2uPgSBW2_E_PUIs-uI_MZVs2hlA",
-            authDomain: "treemap-46453.firebaseapp.com",
-            projectId: "treemap-46453",
-            storageBucket: "treemap-46453.appspot.com",
-            messagingSenderId: "629734840216",
-            appId: "1:629734840216:web:8dbe1e33662fe844eefded"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const colorMap = { red: '#ff4757', green: '#2ed573', blue: '#3742fa', orange: '#ffa502', gray: '#a4b0be' };
+    const firebaseConfig = {
+        apiKey: "AIzaSyBw6TBu2uPgSBW2_E_PUIs-uI_MZVs2hlA",
+        authDomain: "treemap-46453.firebaseapp.com",
+        projectId: "treemap-46453",
+        storageBucket: "treemap-46453.appspot.com",
+        messagingSenderId: "629734840216",
+        appId: "1:629734840216:web:8dbe1e33662fe844eefded"
+    };
 
-        let map;
-        let myLocationMarker = null;
-        let markers = []; 
-        let allSharedTrees = [];
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-        document.addEventListener('DOMContentLoaded', () => {
-            kakao.maps.load(loadSharedMap);
-            document.getElementById('myLocationBtn').addEventListener('click', showMyLocation);
-            
-            // ⭐ 지도 타입 선택 버튼 이벤트 리스너 추가
-            document.getElementById('roadmapBtn').addEventListener('click', () => setMapType('ROADMAP'));
-            document.getElementById('satelliteBtn').addEventListener('click', () => setMapType('HYBRID'));
+    let map;
+    let markers = [];
+    let sharedTrees = [];
+    let myLocationMarker = null;
+    const colorMap = { red: '#ff4757', green: '#2ed573', blue: '#3742fa', orange: '#ffa502', gray: '#a4b0be' };
 
-            document.querySelectorAll('#colorFilterContainer input').forEach(el => el.addEventListener('change', (e) => applyFiltersAndSort(e)));
-            document.getElementById('sortFilter').addEventListener('change', applyFiltersAndSort);
+    document.addEventListener('DOMContentLoaded', initSharePage);
 
-            document.getElementById('toggle-right-sidebar-desktop').addEventListener('click', toggleRightSidebarDesktop);
-            const mobileToggle = document.querySelector('.mobile-list-toggle');
-            const backdrop = document.querySelector('.backdrop');
-            const rightSidebar = document.getElementById('right-sidebar');
-            mobileToggle.addEventListener('click', () => {
-                rightSidebar.classList.toggle('visible');
-                backdrop.style.display = rightSidebar.classList.contains('visible') ? 'block' : 'none';
-            });
-            backdrop.addEventListener('click', () => {
-                rightSidebar.classList.remove('visible');
-                backdrop.style.display = 'none';
-            });
+    function setupEventListeners() {
+        document.getElementById('roadmapBtn').addEventListener('click', () => changeMapType('ROADMAP'));
+        document.getElementById('satelliteBtn').addEventListener('click', () => changeMapType('HYBRID'));
+        document.getElementById('myLocationBtn').addEventListener('click', showMyLocation);
+        
+        setupCheckboxFilter('colorFilterContainer');
+        setupCheckboxFilter('gradeFilterContainer');
+        document.getElementById('sortFilter').addEventListener('change', filterAndSortTrees);
+
+        document.getElementById('toggle-sidebar-btn').addEventListener('click', toggleSidebar);
+
+        const rightSidebar = document.getElementById('right-sidebar');
+        const backdrop = document.getElementById('backdrop');
+        document.getElementById('toggleRightSidebarBtn').addEventListener('click', () => {
+            rightSidebar.classList.toggle('visible');
+            backdrop.style.display = rightSidebar.classList.contains('visible') ? 'block' : 'none';
+        });
+        backdrop.addEventListener('click', () => {
+            rightSidebar.classList.remove('visible');
+            backdrop.style.display = 'none';
         });
 
-        function toggleRightSidebarDesktop() {
-            const sidebar = document.getElementById('right-sidebar');
-            const btn = document.getElementById('toggle-right-sidebar-desktop');
-            sidebar.classList.toggle('collapsed');
-            btn.textContent = sidebar.classList.contains('collapsed') ? '◀' : '▶';
-            setTimeout(() => map && map.relayout(), 310);
+        document.getElementById('custom-alert-ok-btn').addEventListener('click', hideCustomAlert);
+        document.getElementById('custom-alert-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'custom-alert-modal') hideCustomAlert();
+        });
+    }
+
+    async function initSharePage() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const shareId = urlParams.get('id');
+
+        if (!shareId) {
+            return showCustomAlert("잘못된 접근입니다. 공유 ID가 없습니다.");
         }
 
-        function showMessage(text) {
-            const msgEl = document.getElementById('message');
-            msgEl.textContent = text;
-            msgEl.style.display = 'block';
-            setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
-        }
+        try {
+            const docRef = db.collection("shares").doc(shareId);
+            const docSnap = await docRef.get();
 
-        async function loadSharedMap() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const shareId = urlParams.get('id');
-            if (!shareId) return showMessage('유효하지 않은 공유 링크입니다.');
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                sharedTrees = data.trees || [];
+                
+                // --- 제목 설정 ---
+                const title = data.title || "공유된 수목 위치";
+                document.title = title;
+                document.getElementById('sharedListTitle').textContent = title;
+                document.getElementById('mobile-title').textContent = title;
 
-            try {
-                const docRef = db.collection('shares').doc(shareId);
-                const docSnap = await docRef.get();
-                if (!docSnap.exists) return showMessage('공유 데이터를 찾을 수 없거나 삭제되었습니다.');
-
-                allSharedTrees = docSnap.data().trees || [];
-                if (allSharedTrees.length === 0) return showMessage('공유된 수목이 없습니다.');
-
-                const mapContainer = document.getElementById('map');
-                const mapOption = { center: new kakao.maps.LatLng(allSharedTrees[0].lat, allSharedTrees[0].lng), level: 5 };
-                map = new kakao.maps.Map(mapContainer, mapOption);
-
-                populateGradeFilter(allSharedTrees);
-                applyFiltersAndSort();
-
-            } catch (error) {
-                console.error("Error loading shared data:", error);
-                showMessage('데이터를 불러오는 중 오류가 발생했습니다.');
-            }
-        }
-        
-        function populateGradeFilter(trees) {
-            const gradeContainer = document.getElementById('gradeFilterContainer');
-            // 기존 등급 필터 옵션 초기화 (전체 제외)
-            gradeContainer.innerHTML = '<span class="filter-title">등급:</span><label><input type="checkbox" name="grade" value="all" checked> 전체</label>';
-            
-            const uniqueGrades = [...new Set(trees.map(t => t.grade).filter(g => g))].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
-            
-            uniqueGrades.forEach(grade => {
-                const label = document.createElement('label');
-                label.innerHTML = `<input type="checkbox" name="grade" value="${grade}"> ${grade}`;
-                gradeContainer.appendChild(label);
-            });
-             document.querySelectorAll('#gradeFilterContainer input').forEach(el => {
-                el.addEventListener('change', (e) => applyFiltersAndSort(e));
-            });
-        }
-        
-        function applyFiltersAndSort(event) {
-            // ... (이하 생략 - 이전 코드와 동일) ...
-        }
-
-        function renderListAndMap(treesToRender) {
-            // ... (이하 생략 - 이전 코드와 동일) ...
-        }
-        
-        // ⭐ '내 위치 보기' 함수에 속도 개선 옵션 추가
-        function showMyLocation() {
-            if (!map) return showMessage("지도가 로드될 때까지 잠시만 기다려주세요.");
-            if (location.protocol !== 'https:') return showMessage('보안(HTTPS) 연결에서만 위치 정보를 사용할 수 있습니다.');
-            
-            if (navigator.geolocation) {
-                const options = {
-                    enableHighAccuracy: false, // 속도 우선
-                    timeout: 8000,             // 8초 이상 걸리면 실패 처리
-                    maximumAge: 60000          // 1분 내의 캐시된 위치 사용
-                };
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const locPosition = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
-                        if (myLocationMarker) myLocationMarker.setMap(null);
-                        myLocationMarker = new kakao.maps.Marker({ map, position: locPosition, image: new kakao.maps.MarkerImage(`data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#007bff" fill-opacity="0.3"/><circle cx="12" cy="12" r="6" fill="#007bff" stroke="white" stroke-width="2"/></svg>')}`, new kakao.maps.Size(24, 24)) });
-                        map.panTo(locPosition);
-                    },
-                    (error) => {
-                        let errorMessage = "위치 정보를 가져올 수 없습니다.";
-                        if (error.code === error.PERMISSION_DENIED) errorMessage = "위치 정보 권한이 차단되었습니다.\n브라우저 설정을 확인해주세요.";
-                        else if (error.code === error.POSITION_UNAVAILABLE) errorMessage = "현재 위치를 찾을 수 없습니다.";
-                        else if (error.code === error.TIMEOUT) errorMessage = "시간이 초과되었습니다.";
-                        showMessage(errorMessage);
-                    },
-                    options // 옵션 적용
-                );
+                kakao.maps.load(initMap);
             } else {
-                showMessage("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
+                showCustomAlert("공유된 데이터를 찾을 수 없습니다.");
             }
+        } catch (error) {
+            console.error("Error getting document:", error);
+            showCustomAlert("데이터를 불러오는 중 오류가 발생했습니다.");
+        }
+    }
+    
+    function initMap() {
+        const container = document.getElementById('map');
+        if(sharedTrees.length === 0) {
+            container.innerHTML = "표시할 수목 데이터가 없습니다.";
+            return;
         }
 
-        // ⭐ 지도 타입 변경 함수 추가
-        function setMapType(maptype) {
-            if (!map) return;
-            const roadmapBtn = document.getElementById('roadmapBtn');
-            const satelliteBtn = document.getElementById('satelliteBtn');
+        const bounds = new kakao.maps.LatLngBounds();
+        sharedTrees.forEach(tree => {
+            if(typeof tree.lat === 'number' && typeof tree.lng === 'number'){
+                bounds.extend(new kakao.maps.LatLng(tree.lat, tree.lng));
+            }
+        });
+
+        const options = { center: bounds.getCenter() };
+        map = new kakao.maps.Map(container, options);
+        map.setBounds(bounds);
+        
+        setupEventListeners();
+        filterAndSortTrees();
+    }
+
+    function updateMapMarkers() {
+        if (!map) return;
+        markers.forEach(marker => marker.setMap(null));
+        markers = [];
+        const displayTrees = getFilteredAndSortedTrees();
+
+        displayTrees.forEach(tree => {
+            if (typeof tree.lat !== 'number' || typeof tree.lng !== 'number') return;
+            const position = new kakao.maps.LatLng(tree.lat, tree.lng);
+            const text = tree.number || '';
+            let textWidth = 0;
+            for (let i = 0; i < text.length; i++) {
+                textWidth += (text.charCodeAt(i) >= 0xAC00 && text.charCodeAt(i) <= 0xD7A3) ? 9 : 4.8;
+            }
+            const padding = 12;
+            const svgWidth = Math.max(18, textWidth + padding);
+            const svgHeight = 23, rectHeight = 16, rectRadius = 8, pointerWidth = 5, fontSize = 10, textY = 13;
             
-            const type = maptype === 'HYBRID' ? kakao.maps.MapTypeId.HYBRID : kakao.maps.MapTypeId.ROADMAP;
-            map.setMapTypeId(type);
+            const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}"><rect x="1" y="1" width="${svgWidth - 2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/><path d="M ${svgWidth/2 - pointerWidth} ${rectHeight} L ${svgWidth/2} ${svgHeight} L ${svgWidth/2 + pointerWidth} ${rectHeight} Z" fill="${colorMap[tree.color] || colorMap.gray}"/><text x="${svgWidth/2}" y="${textY}" font-size="${fontSize}" font-weight="bold" text-anchor="middle" fill="white">${text}</text></svg>`;
+            
+            const imageSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
+            const imageSize = new kakao.maps.Size(svgWidth, svgHeight);
+            const imageOption = { offset: new kakao.maps.Point(svgWidth / 2, svgHeight) };
+            const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+            const marker = new kakao.maps.Marker({ position, image: markerImage });
 
-            roadmapBtn.classList.toggle('active', maptype === 'ROADMAP');
-            satelliteBtn.classList.toggle('active', maptype === 'HYBRID');
+            marker.setMap(map);
+            markers.push(marker);
+        });
+    }
+
+    function updateTreeList() {
+        const treeList = document.getElementById('treeList');
+        const treeListInfo = document.getElementById('treeListInfo');
+        treeList.innerHTML = '';
+        
+        const displayTrees = getFilteredAndSortedTrees();
+        treeListInfo.textContent = `총 ${displayTrees.length}개의 대상목`;
+
+        if (displayTrees.length === 0) {
+            treeList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">표시할 수목이 없습니다.</div>';
+            return;
         }
 
-        // --- 아래 두 함수는 이전과 동일하게 유지됩니다 ---
-        function applyFiltersAndSort(event) {
-            const getSelectedValues = (containerId, e) => {
-                const container = document.getElementById(containerId);
-                if (!container) return [];
-                const allCheckbox = container.querySelector('input[value="all"]');
-                const specificCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]:not([value="all"])'));
-                if (e && e.target && container.contains(e.target)) {
-                    if (e.target.value === 'all') {
-                        if (e.target.checked) specificCheckboxes.forEach(cb => cb.checked = false);
-                    } else {
-                        if (e.target.checked && allCheckbox) allCheckbox.checked = false;
+        displayTrees.forEach(tree => {
+            const div = document.createElement('div');
+            div.className = 'group-item';
+            div.innerHTML = `<div style="width:12px;height:12px;border-radius:50%;background:${colorMap[tree.color]||colorMap.gray};flex-shrink:0;margin-top:3px;"></div><div style="flex:1;min-width:0;"><div><strong>${tree.number}</strong> - ${tree.species}</div><div class="small-text">${getTreeDetails(tree)}</div></div>`;
+            div.addEventListener('click', () => panToTree(tree.lat, tree.lng));
+            treeList.appendChild(div);
+        });
+    }
+
+    function getFilteredAndSortedTrees() {
+        let displayTrees = [...sharedTrees];
+        const selectedColors = getSelectedFilterValues('colorFilterContainer');
+        if (selectedColors.length > 0) {
+            displayTrees = displayTrees.filter(tree => selectedColors.includes(tree.color));
+        }
+        const selectedGrades = getSelectedFilterValues('gradeFilterContainer');
+        if (selectedGrades.length > 0) {
+            displayTrees = displayTrees.filter(tree => selectedGrades.includes(String(tree.grade)));
+        }
+        const sortFilter = document.getElementById('sortFilter').value;
+        displayTrees.sort((a, b) => sortFilter === 'number_desc' ? String(b.number).localeCompare(String(a.number), undefined, {numeric: true}) : String(a.number).localeCompare(String(b.number), undefined, {numeric: true}));
+        return displayTrees;
+    }
+    
+    function filterAndSortTrees() {
+        updateTreeList();
+        updateMapMarkers();
+    }
+
+    function getTreeDetails(tree) {
+        let details = [];
+        if (tree.diameter) details.push(`흉고:${tree.diameter}cm`);
+        if (tree.height) details.push(`수고:${tree.height}m`);
+        if (tree.grade) details.push(`등급:${tree.grade}`);
+        return details.join(' / ');
+    }
+    
+    function panToTree(lat, lng) {
+        if (lat && lng) {
+            map.panTo(new kakao.maps.LatLng(lat, lng));
+            if (window.innerWidth <= 1024) {
+                 document.getElementById('right-sidebar').classList.remove('visible');
+                 document.getElementById('backdrop').style.display = 'none';
+            }
+        }
+    }
+
+    function showMyLocation() {
+        if (location.protocol !== 'https:') {
+            return showCustomAlert('보안(HTTPS) 연결이 필요합니다. iOS 기기에서는 HTTPS 환경에서만 위치 정보를 사용할 수 있습니다.');
+        }
+        if (navigator.geolocation) {
+            const myLocationBtn = document.getElementById('myLocationBtn');
+            const originalText = myLocationBtn.textContent;
+            myLocationBtn.textContent = '위치 찾는 중...';
+            myLocationBtn.disabled = true;
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const locPosition = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
+                    if (myLocationMarker) myLocationMarker.setMap(null);
+                    myLocationMarker = new kakao.maps.Marker({ map, position: locPosition, image: new kakao.maps.MarkerImage(`data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#007bff" fill-opacity="0.3"/><circle cx="12" cy="12" r="6" fill="#007bff" stroke="white" stroke-width="2"/></svg>')}`, new kakao.maps.Size(24, 24)) });
+                    map.setCenter(locPosition);
+                    myLocationBtn.textContent = originalText;
+                    myLocationBtn.disabled = false;
+                },
+                (error) => {
+                    let errorMessage = "위치 정보를 가져올 수 없습니다.";
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED: errorMessage = "위치 정보 권한이 차단되었습니다."; break;
+                        case error.POSITION_UNAVAILABLE: errorMessage = "현재 위치를 찾을 수 없습니다."; break;
+                        case error.TIMEOUT: errorMessage = "위치를 가져오는 데 시간이 초과되었습니다."; break;
                     }
-                }
-                if (allCheckbox && !specificCheckboxes.some(cb => cb.checked)) {
-                    allCheckbox.checked = true;
-                }
-                if (allCheckbox && allCheckbox.checked) return [];
-                return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
-            };
-            const selectedColors = getSelectedValues('colorFilterContainer', event);
-            const selectedGrades = getSelectedValues('gradeFilterContainer', event);
-            const sortValue = document.getElementById('sortFilter').value;
-            let filteredTrees = [...allSharedTrees];
-            if (selectedColors.length > 0) {
-                filteredTrees = filteredTrees.filter(tree => selectedColors.includes(tree.color));
-            }
-            if (selectedGrades.length > 0) {
-                filteredTrees = filteredTrees.filter(tree => selectedGrades.includes(String(tree.grade)));
-            }
-            filteredTrees.sort((a, b) => {
-                const numA = String(a.number);
-                const numB = String(b.number);
-                return sortValue === 'number_desc' 
-                    ? numB.localeCompare(numA, undefined, {numeric: true}) 
-                    : numA.localeCompare(numB, undefined, {numeric: true});
-            });
-            renderListAndMap(filteredTrees);
+                    myLocationBtn.textContent = originalText;
+                    myLocationBtn.disabled = false;
+                    showCustomAlert(errorMessage);
+                },
+                { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+            );
+        } else {
+            showCustomAlert("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
         }
+    }
 
-        function renderListAndMap(treesToRender) {
-            const listContainer = document.getElementById('treeList');
-            const listCountSpan = document.getElementById('treeListCount');
-            listContainer.innerHTML = '';
-            markers.forEach(marker => marker.setMap(null));
-            markers = [];
-            listCountSpan.textContent = `총 ${treesToRender.length}개의 대상목`;
-            if (treesToRender.length === 0) {
-                listContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">표시할 수목이 없습니다.</div>';
-                return;
-            }
-            const bounds = new kakao.maps.LatLngBounds();
-            treesToRender.forEach(tree => {
-                if (typeof tree.lat === 'number' && typeof tree.lng === 'number') {
-                    const position = new kakao.maps.LatLng(tree.lat, tree.lng);
-                    const text = tree.number || '';
-                    let textWidth = 0;
-                    for (let i = 0; i < text.length; i++) { textWidth += (text.charCodeAt(i) > 127) ? 9 : 4.8; }
-                    const padding = 12;
-                    const svgWidth = Math.max(18, textWidth + padding);
-                    const svgHeight = 23, rectHeight = 16, rectRadius = 8, pointerWidth = 5, fontSize = 10, textY = 13;
-                    const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}"><rect x="1" y="1" width="${svgWidth-2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)"/><path d="M ${svgWidth/2-pointerWidth} ${rectHeight} L ${svgWidth/2} ${svgHeight} L ${svgWidth/2+pointerWidth} ${rectHeight} Z" fill="${colorMap[tree.color]||colorMap.gray}"/><text x="${svgWidth/2}" y="${textY}" font-size="${fontSize}" font-weight="bold" text-anchor="middle" fill="white">${text}</text></svg>`;
-                    const imageSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
-                    const markerImage = new kakao.maps.MarkerImage(imageSrc, new kakao.maps.Size(svgWidth, svgHeight), {offset: new kakao.maps.Point(svgWidth/2, svgHeight)});
-                    const marker = new kakao.maps.Marker({ position, image: markerImage });
-                    marker.setMap(map);
-                    markers.push(marker);
-                    bounds.extend(position);
-                }
-                const listItem = document.createElement('div');
-                listItem.className = 'group-item';
-                let detailsHtml = [];
-                if (tree.grade) detailsHtml.push(`등급:${tree.grade}`);
-                if (tree.diameter) detailsHtml.push(`흉고:${tree.diameter}cm`);
-                if (tree.height) detailsHtml.push(`수고:${tree.height}m`);
-                listItem.innerHTML = `
-                    <span class="color-dot" style="background-color: ${colorMap[tree.color] || '#aaaaaa'};"></span>
-                    <div style="flex:1;min-width:0;">
-                        <div><strong>${tree.number}</strong> - ${tree.species}</div>
-                        <div class="small-text">${detailsHtml.join(' / ')}</div>
-                    </div>
-                `;
-                listItem.addEventListener('click', () => map.panTo(new kakao.maps.LatLng(tree.lat, tree.lng)));
-                listContainer.appendChild(listItem);
-            });
-            if (!bounds.isEmpty()) {
-                map.setBounds(bounds);
-            }
-        }
+    function changeMapType(type) {
+        document.getElementById('roadmapBtn').classList.toggle('active', type === 'ROADMAP');
+        document.getElementById('satelliteBtn').classList.toggle('active', type !== 'ROADMAP');
+        map.setMapTypeId(kakao.maps.MapTypeId[type]);
+    }
+    
+    function toggleSidebar() {
+        const sidebar = document.getElementById('right-sidebar');
+        const btn = document.getElementById('toggle-sidebar-btn');
+        sidebar.classList.toggle('collapsed');
+        btn.textContent = sidebar.classList.contains('collapsed') ? '◀' : '▶';
+        setTimeout(() => map && map.relayout(), 310);
+    }
+    
+    function setupCheckboxFilter(containerId) { const container = document.getElementById(containerId); if (!container) return; container.addEventListener('change', (e) => { if (e.target.type !== 'checkbox') return; const allCheckbox = container.querySelector('input[value="all"]'); const specificCheckboxes = Array.from(container.querySelectorAll('input[type="checkbox"]:not([value="all"])')); if (e.target.value === 'all' && e.target.checked) { specificCheckboxes.forEach(cb => cb.checked = false); } else if (e.target.value !== 'all' && e.target.checked) { if(allCheckbox) allCheckbox.checked = false; } if (!specificCheckboxes.some(cb => cb.checked) && allCheckbox && !allCheckbox.checked) { allCheckbox.checked = true; } filterAndSortTrees(); }); }
+    function getSelectedFilterValues(containerId) { const container = document.getElementById(containerId); if (!container) return []; const allCheckbox = container.querySelector('input[value="all"]'); if (allCheckbox && allCheckbox.checked) return []; return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value); }
+    function showCustomAlert(message) { document.getElementById('custom-alert-message').innerText = message; document.getElementById('custom-alert-modal').style.display = 'flex'; }
+    function hideCustomAlert() { document.getElementById('custom-alert-modal').style.display = 'none'; }
     </script>
 </body>
 </html>

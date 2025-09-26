@@ -192,8 +192,7 @@
             const docRef = db.collection("shares").doc(shareId);
             const docSnap = await docRef.get();
 
-            // ⭐⭐⭐ 수정된 부분 ⭐⭐⭐
-            if (docSnap.exists) { // .exists() 에서 괄호()를 삭제했습니다.
+            if (docSnap.exists) {
                 const data = docSnap.data();
                 sharedTrees = data.trees || [];
                 
@@ -212,6 +211,7 @@
         }
     }
     
+    // ⭐⭐⭐ initMap 함수 수정됨 ⭐⭐⭐
     function initMap() {
         const container = document.getElementById('map');
         if(sharedTrees.length === 0) {
@@ -220,15 +220,31 @@
         }
 
         const bounds = new kakao.maps.LatLngBounds();
+        let validPointsFound = 0; // 유효한 좌표가 있는지 확인하기 위한 변수
+
         sharedTrees.forEach(tree => {
             if(typeof tree.lat === 'number' && typeof tree.lng === 'number'){
                 bounds.extend(new kakao.maps.LatLng(tree.lat, tree.lng));
+                validPointsFound++; // 유효한 좌표를 찾으면 카운트 증가
             }
         });
 
-        const options = { center: bounds.getCenter() };
+        let options;
+        // 유효한 좌표가 하나라도 있을 경우에만 bounds 사용
+        if (validPointsFound > 0) {
+            options = { center: bounds.getCenter() };
+        } else {
+            // 유효한 좌표가 하나도 없으면 기본 위치(서울시청)로 설정
+            options = { center: new kakao.maps.LatLng(37.5665, 126.9780), level: 8 };
+            console.warn("공유된 데이터에 유효한 좌표가 없어 기본 위치를 표시합니다.");
+        }
+
         map = new kakao.maps.Map(container, options);
-        map.setBounds(bounds);
+
+        // 유효한 좌표가 있을 경우에만 지도 범위를 재설정
+        if (validPointsFound > 0) {
+            map.setBounds(bounds);
+        }
         
         setupEventListeners();
         filterAndSortTrees();

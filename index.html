@@ -423,6 +423,7 @@
                 <div id="tree-list-actions" style="padding: 10px; display: flex; gap: 5px; border-bottom: 1px solid #e9ecef;">
                     <button id="startMoveModeBtn" class="btn btn-secondary" style="font-size: 12px;">그룹이동</button>
                     <button id="startDeleteModeBtn" class="btn btn-secondary" style="font-size: 12px;">삭제</button>
+                    <button id="startShareModeBtn" class="btn btn-secondary" style="font-size: 12px; background: #17a2b8;">공유하기</button>
                     <button id="executeActionBtn" class="btn" style="display:none; font-size: 12px;"></button>
                     <button id="cancelActionBtn" class="btn btn-secondary" style="display:none; font-size: 12px;">취소</button>
                 </div>
@@ -591,6 +592,34 @@
         </div>
     </div>
 
+    <div id="shareLinkModal" class="modal" style="z-index: 6000;">
+        <div class="modal-content" style="max-width: 450px;">
+            <h4 style="text-align: center;">공유 링크 생성 완료</h4>
+            <p style="margin: 15px 0; font-size: 13px; color: #555; text-align: center;">
+                목적에 맞는 링크를 복사하여 공유하세요.
+            </p>
+            <div class="form-group">
+                <label style="font-size: 13px; margin-bottom: 5px;">
+                    <b>1. 웹 지도 링크</b> <small>(PC/모바일 보기용)</small>
+                </label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="shareWebViewLinkInput" style="flex: 1; padding: 8px; font-size: 12px;" readonly>
+                    <button id="copyWebViewLinkBtn" class="btn" style="flex: 0;">복사</button>
+                </div>
+            </div>
+            <div class="form-group" style="margin-top: 20px;">
+                <label style="font-size: 13px; margin-bottom: 5px;">
+                    <b>2. 카카오맵 앱 링크</b> <small>(모바일 길찾기용)</small>
+                </label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="shareAppUrlInput" style="flex: 1; padding: 8px; font-size: 12px;" readonly>
+                    <button id="copyAppUrlBtn" class="btn" style="flex: 0;">복사</button>
+                </div>
+            </div>
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 20px;" onclick="closeModalById('shareLinkModal')">닫기</button>
+        </div>
+    </div>
+
 
     <script>
     const firebaseConfig = {
@@ -616,7 +645,7 @@
     
     let appMode = 'normal';
     let activeTreeData = null;
-    let listMode = 'normal'; // 'normal', 'move', 'delete'
+    let listMode = 'normal'; // 'normal', 'move', 'delete', 'share'
     let openFolderIds = []; // To track open folders
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -723,6 +752,7 @@
         // Bulk Action Listeners
         document.getElementById('startMoveModeBtn').addEventListener('click', () => toggleListMode('move'));
         document.getElementById('startDeleteModeBtn').addEventListener('click', () => toggleListMode('delete'));
+        document.getElementById('startShareModeBtn').addEventListener('click', () => toggleListMode('share'));
         document.getElementById('cancelActionBtn').addEventListener('click', () => toggleListMode('normal'));
         document.getElementById('executeActionBtn').addEventListener('click', executeBulkAction);
         document.getElementById('confirmMoveBtn').addEventListener('click', confirmGroupMove);
@@ -769,6 +799,9 @@
                 hideCustomAlert();
             }
         });
+        
+        document.getElementById('copyWebViewLinkBtn').addEventListener('click', () => copyToClipboard('shareWebViewLinkInput'));
+        document.getElementById('copyAppUrlBtn').addEventListener('click', () => copyToClipboard('shareAppUrlInput'));
     }
 
     function toggleControls() {
@@ -1064,11 +1097,11 @@
             const svgHeight = 23, rectHeight = 16, rectRadius = 8, pointerWidth = 5, fontSize = 10, textY = 13;
             
             const svgString = `
-              <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">
-                  <rect x="1" y="1" width="${svgWidth - 2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
-                  <path d="M ${svgWidth/2 - pointerWidth} ${rectHeight} L ${svgWidth/2} ${svgHeight} L ${svgWidth/2 + pointerWidth} ${rectHeight} Z" fill="${colorMap[tree.color] || colorMap.gray}"/>
-                  <text x="${svgWidth/2}" y="${textY}" font-size="${fontSize}" font-weight="bold" text-anchor="middle" fill="white">${text}</text>
-              </svg>`;
+                <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">
+                    <rect x="1" y="1" width="${svgWidth - 2}" height="${rectHeight}" rx="${rectRadius}" ry="${rectRadius}" fill="${colorMap[tree.color] || colorMap.gray}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+                    <path d="M ${svgWidth/2 - pointerWidth} ${rectHeight} L ${svgWidth/2} ${svgHeight} L ${svgWidth/2 + pointerWidth} ${rectHeight} Z" fill="${colorMap[tree.color] || colorMap.gray}"/>
+                    <text x="${svgWidth/2}" y="${textY}" font-size="${fontSize}" font-weight="bold" text-anchor="middle" fill="white">${text}</text>
+                </svg>`;
 
             const imageSrc = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
             const imageSize = new kakao.maps.Size(svgWidth, svgHeight);
@@ -1275,14 +1308,15 @@
         listMode = mode;
         const startMoveBtn = document.getElementById('startMoveModeBtn');
         const startDeleteBtn = document.getElementById('startDeleteModeBtn');
+        const startShareBtn = document.getElementById('startShareModeBtn');
         const executeBtn = document.getElementById('executeActionBtn');
         const cancelBtn = document.getElementById('cancelActionBtn');
         const treeCheckboxes = document.querySelectorAll('.tree-checkbox');
         const selectAllContainer = document.getElementById('selectAllContainer');
-
         if (listMode === 'normal') {
             startMoveBtn.style.display = 'block';
             startDeleteBtn.style.display = 'block';
+            startShareBtn.style.display = 'block';
             executeBtn.style.display = 'none';
             cancelBtn.style.display = 'none';
             selectAllContainer.style.display = 'none';
@@ -1291,10 +1325,13 @@
         } else {
             startMoveBtn.style.display = 'none';
             startDeleteBtn.style.display = 'none';
+            startShareBtn.style.display = 'none';
             executeBtn.style.display = 'block';
             cancelBtn.style.display = 'block';
             selectAllContainer.style.display = 'flex';
-            executeBtn.textContent = listMode === 'move' ? '선택 항목 이동' : '선택 삭제';
+            if (listMode === 'move') executeBtn.textContent = '선택 항목 이동';
+            else if (listMode === 'delete') executeBtn.textContent = '선택 삭제';
+            else if (listMode === 'share') executeBtn.textContent = '공유 링크 생성';
             treeCheckboxes.forEach(cb => cb.style.display = 'block');
         }
     }
@@ -1304,7 +1341,6 @@
         if (selectedIds.length === 0) {
             return showCustomAlert('먼저 항목을 선택해주세요.');
         }
-
         if (listMode === 'move') {
             populateMoveFolderSelect();
             openModalById('groupMoveModal');
@@ -1312,6 +1348,8 @@
             if (confirm(`${selectedIds.length}개의 수목을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) {
                 deleteSelectedTrees(selectedIds);
             }
+        } else if (listMode === 'share') {
+            generateShareLink(selectedIds);
         }
     }
 
@@ -1406,6 +1444,79 @@
         sidebar.classList.toggle('collapsed');
         btn.textContent = sidebar.classList.contains('collapsed') ? '◀' : '▶';
         setTimeout(() => map && map.relayout(), 310);
+    }
+
+    async function generateShareLink(ids) {
+        if (!currentUser) return showCustomAlert("로그인이 필요합니다.");
+        const treesToShare = ids.map(id => {
+            const tree = trees.find(t => t.id === id);
+            return {
+                lat: tree.lat, lng: tree.lng, number: tree.number,
+                species: tree.species, color: tree.color
+            };
+        });
+        try {
+            const shareRef = db.collection('shares').doc();
+            await shareRef.set({
+                trees: treesToShare,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                creator: currentUser.uid
+            });
+            const shareId = shareRef.id;
+            const webViewUrl = `${window.location.origin}/share.html?id=${shareId}`;
+            document.getElementById('shareWebViewLinkInput').value = webViewUrl;
+        } catch (error) {
+            console.error("웹 공유 링크 생성 실패:", error);
+            document.getElementById('shareWebViewLinkInput').value = "생성 실패";
+        }
+        let kakaoMapUrl = '';
+        if (ids.length === 1) {
+            const tree = treesToShare[0];
+            const name = `${tree.number} - ${tree.species || '수목'}`;
+            kakaoMapUrl = `https://map.kakao.com/link/map/${encodeURIComponent(name)},${tree.lat},${tree.lng}`;
+        } else if (ids.length > 1) {
+            const startPoint = treesToShare[0];
+            const endPoint = treesToShare[treesToShare.length - 1];
+            const viaPoints = treesToShare.slice(1, -1);
+            const formatPoint = (p) => `${encodeURIComponent(p.number || '지점')},${p.lat},${p.lng}`;
+            
+            const params = new URLSearchParams();
+            params.append('sp', `${startPoint.lat},${startPoint.lng}`);
+            params.append('ep', `${endPoint.lat},${endPoint.lng}`);
+            params.append('by', 'CAR');
+
+            if (viaPoints.length > 0) {
+                const viaList = viaPoints.map(formatPoint).join('|');
+                params.append('via', viaList);
+            }
+            kakaoMapUrl = `https://map.kakao.com/link/route?${params.toString()}`;
+        }
+        document.getElementById('shareAppUrlInput').value = kakaoMapUrl || '생성 불가';
+        
+        openModalById('shareLinkModal');
+        toggleListMode('normal');
+    }
+
+    function copyToClipboard(inputId) {
+        const inputEl = document.getElementById(inputId);
+        if (!inputEl || !inputEl.value || inputEl.value.includes('실패') || inputEl.value.includes('불가')) {
+            return showCustomAlert("복사할 유효한 링크가 없습니다.");
+        }
+        
+        inputEl.select();
+        inputEl.setSelectionRange(0, 99999);
+
+        try {
+            navigator.clipboard.writeText(inputEl.value).then(() => {
+                showCustomAlert('링크가 클립보드에 복사되었습니다.');
+            }, () => {
+                document.execCommand('copy');
+                showCustomAlert('링크가 클립보드에 복사되었습니다.');
+            });
+        } catch (err) {
+            document.execCommand('copy');
+            showCustomAlert('링크가 클립보드에 복사되었습니다.');
+        }
     }
     </script>
 </body>

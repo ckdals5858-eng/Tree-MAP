@@ -1446,13 +1446,15 @@
         setTimeout(() => map && map.relayout(), 310);
     }
 
+    // ⭐ generateShareLink 함수 수정: 공유할 때 등급, 규격 정보 추가
     async function generateShareLink(ids) {
         if (!currentUser) return showCustomAlert("로그인이 필요합니다.");
         const treesToShare = ids.map(id => {
             const tree = trees.find(t => t.id === id);
             return {
                 lat: tree.lat, lng: tree.lng, number: tree.number,
-                species: tree.species, color: tree.color
+                species: tree.species, color: tree.color,
+                grade: tree.grade, diameter: tree.diameter, height: tree.height // ⭐ 추가된 정보
             };
         });
         try {
@@ -1521,4 +1523,3 @@
     </script>
 </body>
 </html>
-
